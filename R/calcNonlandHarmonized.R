@@ -18,14 +18,25 @@ calcNonlandHarmonized <- function(input = "magpie", target = "luh2mod",
   geometry <- attr(xInput, "geometry")
   crs <- attr(xInput, "crs")
 
-  # get target data in spatial resolution of input data
-  xTarget <- calcOutput("NonlandTarget", target = target, aggregate = FALSE)
-  ref <- as.SpatVector(xInput[, 1, 1])[, c(".region", ".id")]
-  xTarget <- terra::extract(xTarget, ref, sum, na.rm = TRUE, bind = TRUE)
-  xTarget <- as.magpie(xTarget)
+  xTarget <- calcOutput("NonlandLowRes", input = input, target = target, aggregate = FALSE)
 
-  stopifnot(setequal(getItems(xInput, 3), getItems(xTarget, 3)))
-  xTarget <- xTarget[, , getItems(xInput, 3)] # harmonize order of dim 3
+
+
+  # landLow <- calcOutput("LandTargetExtrapolated", input = input, target = target,
+  #                       harmonizationPeriod = harmonizationPeriod, extrapolate = FALSE, aggregate = FALSE)
+  # # TODO check
+  # harv <- .aggregateWoodHarvest(xTarget[, , endsWith(getItems(xTarget, 3), "wood_harvest_area")])
+  # landLow <- landLow[, , getItems(harv, 3)]
+  # dif <- landLow - harv
+  # where(dif < 0)$true$individual
+  # dif["IND.50", "y1995", "primf"] |> print() # could harvest secdf instead
+  # dif["IND.50", "y2015", "secdf"] |> print()
+  # dif["IND.54", "y2015", "secdf"] |> print()
+  # dif["EUR.43", "y2015", "primf"] |> print() # could harvest secdf instead
+  # dif["SSA.176", "y2015", "secdf"] |> print() # ?
+  # browser()
+
+
 
   if (method == "fade") {
     # extrapolate
@@ -44,9 +55,28 @@ calcNonlandHarmonized <- function(input = "magpie", target = "luh2mod",
     xTargetExtrapolated[xTargetExtrapolated < 0] <- 0
     xTargetExtrapolated <- mbind(xTarget, xTargetExtrapolated)
 
-    # harmonize/fade
+    harvEx <- .aggregateWoodHarvest(xTargetExtrapolated[, , endsWith(getItems(xTargetExtrapolated, 3), "wood_harvest_area")])
+    landEx <- calcOutput("LandTargetExtrapolated", input = input, target = target,
+                         harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
+    landEx <- landEx[, , getItems(harvEx, 3)]
+    dif <- landEx - harvEx
+    a <- where(dif < 0)$true$individual
+    a[, 'data'] |> table()
+    # TODO check
+
+    # harmonize
     out <- toolHarmonizeFade(xInput, xTargetExtrapolated, harmonizationPeriod = harmonizationPeriod)
     stopifnot(setequal(getItems(out, 3), getItems(xInput, 3)))
+    
+    
+    harvHarm <- .aggregateWoodHarvest(out[, , endsWith(getItems(out, 3), "wood_harvest_area")])
+    landHarm <- calcOutput("LandHarmonized", input = input, target = target,
+                         harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
+    landHarm <- landHarm[, , getItems(harvHarm, 3)]
+    dif <- landHarm - harvHarm
+    dif[dif < 0] |> summary()
+    a <- where(dif < 0)$true$individual
+    a[, 'data'] |> table()
   } else {
     harmonizer <- toolGetHarmonizer(method)
     out <- harmonizer(xInput, xTarget, harmonizationPeriod = harmonizationPeriod)

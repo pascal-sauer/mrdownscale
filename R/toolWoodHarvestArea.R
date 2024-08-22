@@ -13,20 +13,10 @@
 #'
 #' @author Pascal Sauer
 toolWoodHarvestArea <- function(x, land, fix) {
-  map <- as.data.frame(rbind(c("primf_wood_harvest_area", "primf"),
-                             c("secyf_wood_harvest_area", "secdf"),
-                             c("secmf_wood_harvest_area", "secdf"),
-                             c("primn_wood_harvest_area", "primn"),
-                             c("secnf_wood_harvest_area", "secdn")))
-  colnames(map) <- c("harvest", "land")
-
-  stopifnot(setequal(getItems(x, 3), map$harvest),
-            map$land %in% getItems(land, 3),
-            setequal(getItems(x, 1), getItems(land, 1)))
-
+  stopifnot(setequal(getItems(x, 1), getItems(land, 1)))
   woodHarvestAreaBefore <- x
-  woodHarvestArea <- woodHarvestAreaBefore
-  woodHarvestArea <- toolAggregate(woodHarvestArea, map, from = "harvest", to = "land", dim = 3)
+
+  woodHarvestArea <- .aggregateWoodHarvest(x)
 
   stopifnot(identical(getYears(woodHarvestArea), getYears(land)),
             getItems(woodHarvestArea, 3) %in% getItems(land, 3))
@@ -53,4 +43,17 @@ toolWoodHarvestArea <- function(x, land, fix) {
                                                   "(max overshoot: ", signif(-landOvershoot, 3), " Mha)"),
                  level = 1)
   return(x)
+}
+
+.aggregateWoodHarvest <- function(woodHarvest) {
+  map <- as.data.frame(rbind(c("primf_wood_harvest_area", "primf"),
+                              c("secyf_wood_harvest_area", "secdf"),
+                              c("secmf_wood_harvest_area", "secdf"),
+                              c("primn_wood_harvest_area", "primn"),
+                              c("secnf_wood_harvest_area", "secdn")))
+  colnames(map) <- c("harvest", "land")
+
+  stopifnot(setequal(getItems(woodHarvest, 3), map$harvest))
+
+  return(toolAggregate(woodHarvest, map, from = "harvest", to = "land", dim = 3))
 }
