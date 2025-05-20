@@ -32,6 +32,11 @@ calcLandHighRes <- function(input, target, harmonizationPeriod, yearsSubset, dow
                                       xTarget[, harmonizationPeriod[1], ],
                                       xTargetLowRes = landTargetLowRes[, harmonizationPeriod[1], ],
                                       mapping = mapping)
+  } else if (downscaling == "avlCropland") {
+    out <- toolDownscaleAvlCropland(x[, getYears(x, as.integer = TRUE) >= harmonizationPeriod[1], ],
+                                    xTarget[, harmonizationPeriod[1], ],
+                                    xTargetLowRes = landTargetLowRes[, harmonizationPeriod[1], ],
+                                    mapping = mapping)
   } else {
     stop("Unsupported downscaling method \"", downscaling, "\"")
   }
