@@ -28,15 +28,6 @@ calcLandHarmonized <- function(input, target, harmonizationPeriod, method = "fad
   toolExpectLessDiff(inSum[, 1, ], tSum[, 1, ], 10^-5,
                      "Total areas are the same in target and input data")
 
-  if (max(abs(inSum[, 1, ] - tSum[, 1, ])) >= 10^-5) {
-    corr <- setYears(dimSums(xTarget[, 1, ], dim = 3) / dimSums(xInput[, 1, ], dim = 3), NULL)
-    stopifnot(is.finite(corr), corr >= 0)
-    xInput <- xInput * corr
-    toolStatusMessage("note", paste0("input data multiplied with correction factors to match target areas ",
-                                     "(max ratio = ", round(max(corr), 2),
-                                     ", min ratio = ", round(min(corr), 2),  ")"))
-  }
-
   harmonizer <- toolGetHarmonizer(method)
   out <- harmonizer(xInput, xTarget, harmonizationPeriod = harmonizationPeriod)
 

@@ -15,6 +15,8 @@
 toolHarmonizeOffset <- function(input, target, harmonizationPeriod) {
   "!# @monitor mip::harmonize"
 
+  input <- toolEqualizeArea(input, target)
+
   .df <- function(input) {
     df <- magclass::as.data.frame(input, rev = 3)
     stopifnot(identical(names(df), c("region", "id", "year", "data", ".value")))
