@@ -18,10 +18,10 @@ plotHarmonization <- function(input, target, harmonizationPeriod) {
              magclass::setNames(lh, "harmonized"))
   x <- as.data.frame(x)
   names(x)[4:5] <- c("Data", "CroplandMha")
-  library(ggplot2)
+  withr::local_package("ggplot2")
   fontsize <- 25
   ggplot(data = x, aes(x = Year, y = CroplandMha, group = Data, color = Data)) +
-    ggplot2::geom_line(size = 1.5) +
+    geom_line(size = 1.5) +
     theme(text = element_text(size = fontsize),
           axis.text = element_text(size = fontsize),
           axis.title = element_text(size = fontsize),
@@ -52,10 +52,10 @@ plotHistogram <- function(input, target, harmonizationPeriod, variables) {
   x <- as.data.frame(x)
   # x <- x[x$Region == "EUR", ]
   names(x)[4:5] <- c("Data", "RelativeDiff")
-  library(ggplot2)
+  withr::local_package("ggplot2")
   fontsize <- 25
   (ggplot(data = x, aes(RelativeDiff, group = Region))
-    + ggplot2::geom_histogram()
+    + geom_histogram()
     + facet_grid(vars(Year), vars(Region))
     # + facet_wrap(~Year)
     + theme(text = element_text(size = fontsize),
