@@ -4,7 +4,13 @@
 \alias{calcLandReport}
 \title{calcLandReport}
 \usage{
-calcLandReport(outputFormat, harmonizationPeriod, yearsSubset)
+calcLandReport(
+  outputFormat,
+  harmonizationPeriod,
+  yearsSubset,
+  harmonization,
+  downscaling
+)
 }
 \arguments{
 \item{outputFormat}{format in which the outputs should be prepared. Options: ESM, ScenarioMIP}
@@ -14,6 +20,10 @@ year the target dataset is used, after the second given year the input
 dataset is used, in between harmonize between the two datasets}
 
 \item{yearsSubset}{vector of years to keep in the output dataset}
+
+\item{harmonization}{name of harmonization method, see \code{\link{toolGetHarmonizer}}}
+
+\item{downscaling}{name of downscaling method, currently only "magpieClassic"}
 }
 \value{
 land use data

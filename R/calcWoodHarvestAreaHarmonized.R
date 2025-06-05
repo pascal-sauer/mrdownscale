@@ -13,20 +13,20 @@
 #' @param harmonizationPeriod Two integer values, before the first given
 #' year the target dataset is used, after the second given year the input
 #' dataset is used, in between harmonize between the two datasets
-#' @param method harmonization method, see \code{\link{toolGetHarmonizer}} for available methods
+#' @param harmonization harmonization method, see \code{\link{toolGetHarmonizer}} for available methods
 #' @return harmonized wood harvest area data
 #'
 #' @examples
 #' \dontrun{
 #'   calcOutput("WoodHarvestAreaHarmonized", input = "magpie",
 #'              target = "luh2mod", harmonizationPeriod = c(2015, 2050),
-#'              method = "fade")
+#'              harmonization = "fade")
 #' }
 #' @author Pascal Sauer
-calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, method) {
+calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, harmonization) {
   landHarmonized <- calcOutput("LandHarmonized", input = input, target = target,
                                harmonizationPeriod = harmonizationPeriod,
-                               method = method, aggregate = FALSE)
+                               harmonization = harmonization, aggregate = FALSE)
 
   # calculate prim harvest based on prim land reduction
   prim <- c("primf", "primn")
@@ -49,7 +49,7 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, me
   xTarget <- calcOutput("NonlandTargetExtrapolated", input = input, target = target,
                         harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
   xTarget <- xTarget[, , woodHarvestAreaCategories()]
-  harmonizer <- toolGetHarmonizer(method)
+  harmonizer <- toolGetHarmonizer(harmonization)
   rawHarvestHarmonized <- harmonizer(xInput, xTarget, harmonizationPeriod = harmonizationPeriod)
 
   afterHarmonization <- getYears(xInput, as.integer = TRUE)

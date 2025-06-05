@@ -91,9 +91,7 @@ calcLandTargetExtrapolated <- function(input, target, harmonizationPeriod) {
       out[, i, secdfn] <- out[, i, secdfn] + toSecd
       out[, i, primfn] <- mpmin(out[, i, primfn], maxPossiblePrim)
 
-      woodland <- out[, , c("primf", "primn", "secdf", "secdn")]
-      woodland <- add_columns(woodland, "pltns")
-      woodland[, , "pltns"] <- dimSums(out[, , c("pltns_added_treecover", "pltns_excl_added_treecover")])
+      woodland <- out[, , getItems(harvestAgg, 3)]
       stopifnot(harvestAgg <= woodland[, i - 1, ] / timestepLength,
                 woodland[, i, primfn] <= woodland[, i - 1, primfn] - timestepLength * harvestAgg[, , primfn])
     }

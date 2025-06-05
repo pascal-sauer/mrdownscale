@@ -7,12 +7,15 @@
 #' year the target dataset is used, after the second given year the input
 #' dataset is used, in between harmonize between the two datasets
 #' @param yearsSubset vector of years to keep in the output dataset
+#' @param harmonization name of harmonization method, see \code{\link{toolGetHarmonizer}}
+#' @param downscaling name of downscaling method, currently only "magpieClassic"
 #' @return land use data
 #' @author Pascal Sauer
-calcLandReport <- function(outputFormat, harmonizationPeriod, yearsSubset) {
+calcLandReport <- function(outputFormat, harmonizationPeriod, yearsSubset, harmonization, downscaling) {
   if (outputFormat == "ESM") {
     native <- calcOutput("LandHighRes", input = "magpie", target = "luh2mod",
                          harmonizationPeriod = harmonizationPeriod, yearsSubset = yearsSubset,
+                         downscaling = downscaling, harmonization = harmonization,
                          aggregate = FALSE)
     cellArea <- readSource("LUH2v2h", subtype = "cellArea", convert = FALSE)
     cellArea <- collapseDim(as.magpie(cellArea), 3)
@@ -58,8 +61,8 @@ calcLandReport <- function(outputFormat, harmonizationPeriod, yearsSubset) {
     report <- calcOutput("LandReportScenarioMIP",
                          harmonizationPeriod = harmonizationPeriod,
                          yearsSubset = yearsSubset,
-                         supplementary = TRUE,
-                         aggregate = FALSE)
+                         harmonization = harmonization, downscaling = downscaling,
+                         supplementary = TRUE, aggregate = FALSE)
     return(list(x = report$x,
                 isocountries = report$isocountries,
                 unit = report$unit,

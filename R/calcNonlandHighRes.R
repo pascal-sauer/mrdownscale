@@ -16,17 +16,20 @@
 #' year the target dataset is used, after the second given year the input
 #' dataset is used, in between harmonize between the two datasets
 #' @param yearsSubset vector of years to keep in the output dataset
+#' @param harmonization name of harmonization method, see \code{\link{toolGetHarmonizer}}
+#' @param downscaling name of downscaling method, currently only "magpieClassic"
 #' @return downscaled nonland data
 #'
 #' @examples
 #' \dontrun{
 #'   calcOutput("NonlandHighRes", input = "magpie", target = "luh2mod",
-#'              harmonizationPeriod = c(2015, 2050), yearsSubset = 2015:2100)
+#'              harmonizationPeriod = c(2015, 2050), yearsSubset = 2015:2100,
+#'              harmonization = "fade", downscaling = "magpieClassic")
 #' }
 #' @author Pascal Sauer
-calcNonlandHighRes <- function(input, target, harmonizationPeriod, yearsSubset) {
+calcNonlandHighRes <- function(input, target, harmonizationPeriod, yearsSubset, harmonization, downscaling) {
   x <- calcOutput("NonlandHarmonized", input = input, target = target,
-                  harmonizationPeriod = harmonizationPeriod, method = "fade", aggregate = FALSE)
+                  harmonizationPeriod = harmonizationPeriod, harmonization = harmonization, aggregate = FALSE)
   x <- x[, getYears(x, as.integer = TRUE) %in% yearsSubset, ]
 
   futureYears <- getYears(x, as.integer = TRUE)
@@ -35,11 +38,11 @@ calcNonlandHighRes <- function(input, target, harmonizationPeriod, yearsSubset) 
   resmap <- calcOutput("ResolutionMapping", input = input, target = target, aggregate = FALSE)
 
   landHighRes <- calcOutput("LandHighRes", input = input, target = target,
-                            harmonizationPeriod = harmonizationPeriod, yearsSubset = yearsSubset, aggregate = FALSE)
+                            harmonizationPeriod = harmonizationPeriod, yearsSubset = yearsSubset,
+                            harmonization = harmonization, downscaling = downscaling, aggregate = FALSE)
   land <- landHighRes[, , c("urban", "pastr", "range"), invert = TRUE]
   map <- as.data.frame(rbind(c("primf", "primf"),
-                             c("pltns_excl_added_treecover", "pltns_excl_added_treecover"),
-                             c("pltns_added_treecover", "pltns_added_treecover"),
+                             c("pltns", "pltns"),
                              c("secdf", "secdf"),
                              c("primn", "primn"),
                              c("secdn", "secdn"),

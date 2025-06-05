@@ -4,7 +4,14 @@
 \alias{calcLandTransitions}
 \title{calcLandTransitions}
 \usage{
-calcLandTransitions(outputFormat, harmonizationPeriod, yearsSubset, gross)
+calcLandTransitions(
+  outputFormat,
+  harmonizationPeriod,
+  yearsSubset,
+  harmonization,
+  downscaling,
+  gross
+)
 }
 \arguments{
 \item{outputFormat}{format in which the outputs should be prepared. Currently,
@@ -15,6 +22,10 @@ year the target dataset is used, after the second given year the input
 dataset is used, in between harmonize between the two datasets}
 
 \item{yearsSubset}{vector of years to keep in the output dataset}
+
+\item{harmonization}{name of harmonization method, see \code{\link{toolGetHarmonizer}}}
+
+\item{downscaling}{name of downscaling method, currently only "magpieClassic"}
 
 \item{gross}{either boolean or a magpie object containing bidirectional
 transition shares relative to the area of the involved land pools (transition

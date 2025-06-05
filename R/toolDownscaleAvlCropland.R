@@ -28,7 +28,7 @@ toolDownscaleAvlCropland <- function(x, xTarget, xTargetLowRes, mapping) {
                        data.frame(fine = c("primn", "secdn"), magpie = "other"),
                        data.frame(fine = c("pastr", "range"), magpie = "past"),
                        data.frame(fine = "primf", magpie = "primforest"),
-                       data.frame(fine = c("secdf", "pltns_excl_added_treecover", "pltns_added_treecover"), magpie = "secdforest"))
+                       data.frame(fine = c("secdf", "pltns"), magpie = "secdforest"))
   variableMap <- rbind(variableMap,
                        data.frame(fine = setdiff(getItems(x, 3), variableMap$fine),
                                   magpie = setdiff(getItems(x, 3), variableMap$fine)))

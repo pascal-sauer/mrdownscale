@@ -1,6 +1,7 @@
 fullSCENARIOMIP <- function(rev = numeric_version("0"), ..., scenario = "",
                             harmonizationPeriod = c(2020, 2050),
-                            yearsSubset = 2020:2150,
+                            yearsSubset = 2020:2100,
+                            harmonization = "fade", downscaling = "magpieClassic",
                             compression = 2, progress = TRUE) {
   stopifnot(...length() == 0)
 
@@ -27,6 +28,7 @@ fullSCENARIOMIP <- function(rev = numeric_version("0"), ..., scenario = "",
   ncFile <- paste0("multiple-states", fileSuffix)
   calcOutput("StatesNC", outputFormat = "ScenarioMIP", harmonizationPeriod = harmonizationPeriod,
              yearsSubset = yearsSubset,
+             harmonization = harmonization, downscaling = downscaling,
              aggregate = FALSE, file = ncFile, writeArgs = writeArgs)
   do.call(toolAddMetadataNC, c(ncFile = ncFile, metadataArgs))
 
@@ -34,6 +36,7 @@ fullSCENARIOMIP <- function(rev = numeric_version("0"), ..., scenario = "",
   calcOutput("ManagementNC", outputFormat = "ScenarioMIP",
              harmonizationPeriod = harmonizationPeriod,
              yearsSubset = yearsSubset,
+             harmonization = harmonization, downscaling = downscaling,
              aggregate = FALSE, file = ncFile, writeArgs = writeArgs)
   do.call(toolAddMetadataNC, c(ncFile = ncFile, metadataArgs))
 
@@ -41,6 +44,7 @@ fullSCENARIOMIP <- function(rev = numeric_version("0"), ..., scenario = "",
   calcOutput("TransitionsNC", outputFormat = "ScenarioMIP",
              harmonizationPeriod = harmonizationPeriod,
              yearsSubset = yearsSubset,
+             harmonization = harmonization, downscaling = downscaling,
              aggregate = FALSE, file = ncFile, writeArgs = writeArgs)
   do.call(toolAddMetadataNC, c(ncFile = ncFile, metadataArgs))
 

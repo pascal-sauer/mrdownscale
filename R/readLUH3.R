@@ -40,7 +40,7 @@ readLUH3 <- function(subtype, subset) {
                    paste0("irrig_", cropTypes),
                    "flood", "rndwd", "fulwd", "combf")
     # the following variables are present but all zeros, so no need to read those:
-    # cpbf2_*, pltns_wdprd, pltns_bfuel, addtc
+    # cpbf2_*, pltns_wdprd, pltns_bfuel
     # prtct_primf, prtct_primn, prtct_secdf, prtct_secdn, prtct_pltns
 
     x <- readLayers("multiple-management_input4MIPs_landState_CMIP_UofMD-landState-3-1-1_gn_0850-2024.nc",

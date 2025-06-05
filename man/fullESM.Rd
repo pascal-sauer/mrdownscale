@@ -9,7 +9,9 @@ fullESM(
   ...,
   scenario = "",
   harmonizationPeriod = c(2015, 2050),
-  yearsSubset = 2015:2150,
+  yearsSubset = 2015:2100,
+  harmonization = "fade",
+  downscaling = "magpieClassic",
   compression = 2,
   progress = TRUE
 )
@@ -27,6 +29,10 @@ year the target dataset is used, after the second given year the input
 dataset is used, in between harmonize between the two datasets}
 
 \item{yearsSubset}{remove years from the returned data which are not in yearsSubset}
+
+\item{harmonization}{name of harmonization method, see \code{\link{toolGetHarmonizer}}}
+
+\item{downscaling}{name of downscaling method, currently only "magpieClassic"}
 
 \item{compression}{compression level of the resulting .nc files, possible values are integers from 1-9,
 1 = fastest, 9 = best compression}

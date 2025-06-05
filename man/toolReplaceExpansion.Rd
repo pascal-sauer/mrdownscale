@@ -10,7 +10,8 @@ toolReplaceExpansion(
   to,
   ...,
   noteThreshold = 10^-10,
-  warnThreshold = 10^-5
+  warnThreshold = 10^-5,
+  level = 1
 )
 }
 \arguments{
@@ -30,6 +31,8 @@ that expansion was replaced}
 
 \item{warnThreshold}{expansion greater than this will trigger a warning
 that expanding considerably}
+
+\item{level}{passed to toolStatusMessage}
 }
 \value{
 a magpie object with expansion of 'from' replaced by 'to'

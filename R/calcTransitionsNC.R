@@ -7,12 +7,14 @@
 #' year the target dataset is used, after the second given year the input
 #' dataset is used, in between harmonize between the two datasets
 #' @param yearsSubset remove years from the returned data which are not in yearsSubset
+#' @param harmonization name of harmonization method, see \code{\link{toolGetHarmonizer}}
+#' @param downscaling name of downscaling method, currently only "magpieClassic"
 #' @return data prepared to be written as a LUH-style transitions.nc file
 #' @author Pascal Sauer, Jan Philipp Dietrich
-calcTransitionsNC <- function(outputFormat, harmonizationPeriod, yearsSubset) {
+calcTransitionsNC <- function(outputFormat, harmonizationPeriod, yearsSubset, harmonization, downscaling) {
   nonland <- calcOutput("NonlandReport", outputFormat = outputFormat,
-                        harmonizationPeriod = harmonizationPeriod,
-                        yearsSubset = yearsSubset, aggregate = FALSE)
+                        harmonizationPeriod = harmonizationPeriod, yearsSubset = yearsSubset,
+                        harmonization = harmonization, downscaling = downscaling, aggregate = FALSE)
 
   nonland <- nonland[, , grep("_(bioh|harv)$", getItems(nonland, 3), value = TRUE)]
 
@@ -21,6 +23,7 @@ calcTransitionsNC <- function(outputFormat, harmonizationPeriod, yearsSubset) {
   if (outputFormat == "ESM") {
     transitions <- calcOutput("LandTransitions", outputFormat = outputFormat,
                               harmonizationPeriod = harmonizationPeriod, yearsSubset = yearsSubset,
+                              harmonization = harmonization, downscaling = downscaling,
                               gross = TRUE, aggregate = FALSE)
     getItems(transitions, raw = TRUE, dim = 3) <- sub("\\.", "_to_", getItems(transitions, dim = 3))
     getSets(transitions, fulldim = FALSE)[3] <- "transitions"

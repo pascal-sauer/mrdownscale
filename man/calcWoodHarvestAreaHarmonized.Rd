@@ -4,7 +4,12 @@
 \alias{calcWoodHarvestAreaHarmonized}
 \title{calcWoodHarvestAreaHarmonized}
 \usage{
-calcWoodHarvestAreaHarmonized(input, target, harmonizationPeriod, method)
+calcWoodHarvestAreaHarmonized(
+  input,
+  target,
+  harmonizationPeriod,
+  harmonization
+)
 }
 \arguments{
 \item{input}{name of the input dataset, currently only "magpie"}
@@ -15,7 +20,7 @@ calcWoodHarvestAreaHarmonized(input, target, harmonizationPeriod, method)
 year the target dataset is used, after the second given year the input
 dataset is used, in between harmonize between the two datasets}
 
-\item{method}{harmonization method, see \code{\link{toolGetHarmonizer}} for available methods}
+\item{harmonization}{harmonization method, see \code{\link{toolGetHarmonizer}} for available methods}
 }
 \value{
 harmonized wood harvest area data
@@ -33,7 +38,7 @@ secondary land, the excess is shifted to the other secondary land
 \dontrun{
   calcOutput("WoodHarvestAreaHarmonized", input = "magpie",
              target = "luh2mod", harmonizationPeriod = c(2015, 2050),
-             method = "fade")
+             harmonization = "fade")
 }
 }
 \author{

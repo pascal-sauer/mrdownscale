@@ -9,6 +9,8 @@
 #' year the target dataset is used, after the second given year the input
 #' dataset is used, in between harmonize between the two datasets
 #' @param yearsSubset vector of years to keep in the output dataset
+#' @param harmonization name of harmonization method, see \code{\link{toolGetHarmonizer}}
+#' @param downscaling name of downscaling method, currently only "magpieClassic"
 #' @param gross either boolean or a magpie object containing bidirectional
 #' transition shares relative to the area of the involved land pools (transition
 #' divided by the area of the land pool in the "from" sub dimension). If set to
@@ -17,14 +19,15 @@
 #' period from 1995 to 2015 will be used.
 #' @return land use transition data
 #' @author Jan Philipp Dietrich, Pascal Sauer
-calcLandTransitions <- function(outputFormat, harmonizationPeriod, yearsSubset, gross) {
+calcLandTransitions <- function(outputFormat, harmonizationPeriod, yearsSubset,
+                                harmonization, downscaling, gross) {
   if (outputFormat != "ESM") {
     stop("Can only report for outputFormat = 'ESM'")
   }
 
   land <- calcOutput("LandReport", outputFormat = "ESM",
-                     harmonizationPeriod = harmonizationPeriod,
-                     yearsSubset = yearsSubset, aggregate = FALSE)
+                     harmonizationPeriod = harmonizationPeriod, yearsSubset = yearsSubset,
+                     harmonization = harmonization, downscaling = downscaling, aggregate = FALSE)
   land <- land[, , grep("(_|manaf)", getItems(land, dim = 3), invert = TRUE, value = TRUE)]
 
   # add extra year as copy of last year to get gross transitions (net zero) for

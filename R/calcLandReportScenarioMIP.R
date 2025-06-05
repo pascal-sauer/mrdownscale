@@ -6,25 +6,21 @@
 #' year the target dataset is used, after the second given year the input
 #' dataset is used, in between harmonize between the two datasets
 #' @param yearsSubset vector of years to keep in the output dataset
+#' @param harmonization name of harmonization method, see \code{\link{toolGetHarmonizer}}
+#' @param downscaling name of downscaling method, currently only "magpieClassic"
 #' @return land use data
 #' @author Pascal Sauer
-calcLandReportScenarioMIP <- function(harmonizationPeriod, yearsSubset) {
+calcLandReportScenarioMIP <- function(harmonizationPeriod, yearsSubset, harmonization, downscaling) {
   landHighRes <- calcOutput("LandHighRes", input = "magpie", target = "luh3",
                             harmonizationPeriod = harmonizationPeriod, yearsSubset = yearsSubset,
+                            harmonization = harmonization, downscaling = downscaling,
                             aggregate = FALSE)
   cellArea <- readSource("LUH3", subtype = "cellArea", convert = FALSE)
   cellArea <- collapseDim(as.magpie(cellArea), 3)
 
   cropData <- toolCropData(landHighRes, cellArea)
 
-  nonCropData <- landHighRes[, , c("primf", "primn", "secdf", "secdn", "urban", "pastr", "range")]
-  nonCropData <- mbind(nonCropData,
-                       magclass::setNames(landHighRes[, , c("pltns_added_treecover")], "addtc"))
-
-  nonCropData <- add_columns(nonCropData, "pltns")
-  nonCropData[, , "pltns"] <- dimSums(landHighRes[, , c("pltns_added_treecover", "pltns_excl_added_treecover")])
-
-  # convert from Mha to share of cell area
+  nonCropData <- landHighRes[, , c("primf", "primn", "secdf", "secdn", "urban", "pastr", "range", "pltns")]
   nonCropData <- nonCropData * 10000 / cellArea[getItems(cellArea, 1) %in% getItems(nonCropData, 1), , ]
 
   out <- mbind(cropData, nonCropData)

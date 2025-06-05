@@ -8,8 +8,7 @@ toolMaxHarvestPerYear(land, split = TRUE)
 }
 \arguments{
 \item{land}{magpie object with at least the following categories:
-c("primf", "secdf", "pltns_added_treecover",
-  "pltns_excl_added_treecover", "primn", "secdn")}
+c("primf", "secdf", "pltns", "primn", "secdn")}
 
 \item{split}{if TRUE: split secdf to secyf and secdmf,
 rename secdf to secnf, and append "_wood_harvest_area" to names}

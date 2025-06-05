@@ -4,7 +4,7 @@
 \alias{calcNonlandHarmonized}
 \title{calcNonlandHarmonized}
 \usage{
-calcNonlandHarmonized(input, target, harmonizationPeriod, method)
+calcNonlandHarmonized(input, target, harmonizationPeriod, harmonization)
 }
 \arguments{
 \item{input}{name of the input dataset, currently only "magpie"}
@@ -15,7 +15,7 @@ calcNonlandHarmonized(input, target, harmonizationPeriod, method)
 year the target dataset is used, after the second given year the input
 dataset is used, in between harmonize between the two datasets}
 
-\item{method}{harmonization method, see \code{\link{toolGetHarmonizer}} for available methods}
+\item{harmonization}{harmonization method, see \code{\link{toolGetHarmonizer}} for available methods}
 }
 \value{
 harmonized nonland data

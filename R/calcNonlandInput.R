@@ -37,10 +37,6 @@ calcNonlandInput <- function(input) {
     stopifnot(identical(getYears(woodHarvestArea), getYears(land)))
     years <- getYears(land, as.integer = TRUE)
     timestepLengths <- new.magpie(years = years[-1], fill = diff(years))
-
-    land <- add_columns(land, "forestry")
-    land[, , "forestry"] <- dimSums(land[, , c("forestry_aff", "forestry_ndc", "forestry_plant")])
-
     woodland <- setYears(land[, -nyears(land), getItems(woodHarvestArea, 3.2)], years[-1])
     toolExpectTrue(min(woodland - timestepLengths * collapseDim(woodHarvestArea)[, -1, ]) >= -10^-10,
                    "Wood harvest area is smaller than land of the corresponding type")

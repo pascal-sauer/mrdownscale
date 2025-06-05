@@ -7,13 +7,16 @@
 toolGetHarmonizer(harmonizerName)
 }
 \arguments{
-\item{harmonizerName}{name of a harmonizer function, currently offset, fade, none}
+\item{harmonizerName}{name of a harmonizer function, currently offset, fade, fadeForest}
 }
 \value{
 harmonizer function
 }
 \description{
 Get a harmonizer function by name.
+}
+\seealso{
+\code{\link{toolHarmonizeOffset}}, \code{\link{toolHarmonizeFade}}, \code{\link{toolHarmonizeFadeForest}}
 }
 \author{
 Pascal Sauer

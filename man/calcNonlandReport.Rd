@@ -4,7 +4,13 @@
 \alias{calcNonlandReport}
 \title{calcNonlandReport}
 \usage{
-calcNonlandReport(outputFormat, harmonizationPeriod, yearsSubset)
+calcNonlandReport(
+  outputFormat,
+  harmonizationPeriod,
+  yearsSubset,
+  harmonization,
+  downscaling
+)
 }
 \arguments{
 \item{outputFormat}{options: ESM, ScenarioMIP}
@@ -14,6 +20,10 @@ year the target dataset is used, after the second given year the input
 dataset is used, in between harmonize between the two datasets}
 
 \item{yearsSubset}{vector of years to keep in the output dataset}
+
+\item{harmonization}{name of harmonization method, see \code{\link{toolGetHarmonizer}}}
+
+\item{downscaling}{name of downscaling method, currently only "magpieClassic"}
 }
 \value{
 nonland data
@@ -24,7 +34,8 @@ Convert the downscaled nonland data to the format required by the given project.
 \examples{
 \dontrun{
   calcOutput("NonlandReport", outputFormat = "ESM",
-             harmonizationPeriod = c(2015, 2050), yearsSubset = 2015:2100)
+             harmonizationPeriod = c(2015, 2050), yearsSubset = 2015:2100,
+             harmonization = "fade", downscaling = "magpieClassic")
 }
 }
 \author{

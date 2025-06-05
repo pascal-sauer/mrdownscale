@@ -4,7 +4,7 @@
 \alias{calcLandHarmonized}
 \title{calcLandHarmonized}
 \usage{
-calcLandHarmonized(input, target, harmonizationPeriod, method = "fade")
+calcLandHarmonized(input, target, harmonizationPeriod, harmonization)
 }
 \arguments{
 \item{input}{name of the land input source to be used}
@@ -15,7 +15,7 @@ calcLandHarmonized(input, target, harmonizationPeriod, method = "fade")
 year the target dataset is used, after the second given year the input
 dataset is used, in between harmonize between the two datasets}
 
-\item{method}{transitioning method}
+\item{harmonization}{name of harmonization method, see \code{\link{toolGetHarmonizer}}}
 }
 \description{
 This function computes a version of the chosen land input data in the resolution

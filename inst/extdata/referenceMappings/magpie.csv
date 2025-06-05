@@ -1,14 +1,12 @@
 reference;data
 primf;primforest
 secdf;secdforest
+pltns;forestry
 primn;other
 secdn;other
 pastr;past
 range;past
 urban;urban
-forestry_ndc;forestry_ndc
-forestry_plant;forestry_plant
-forestry_afforestation;forestry_aff
 c3per_irrigated_biofuel_1st_gen;biofuel_1st_gen
 c3per_rainfed_biofuel_1st_gen;biofuel_1st_gen
 c4per_irrigated_biofuel_1st_gen;biofuel_1st_gen

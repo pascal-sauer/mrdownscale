@@ -12,13 +12,16 @@
 #' year the target dataset is used, after the second given year the input
 #' dataset is used, in between harmonize between the two datasets
 #' @param yearsSubset remove years from the returned data which are not in yearsSubset
+#' @param harmonization name of harmonization method, see \code{\link{toolGetHarmonizer}}
+#' @param downscaling name of downscaling method, currently only "magpieClassic"
 #' @param compression compression level of the resulting .nc files, possible values are integers from 1-9,
 #' 1 = fastest, 9 = best compression
 #' @param progress boolean defining whether progress should be printed
 #'
 #' @author Pascal Sauer, Jan Philipp Dietrich
 fullESM <- function(rev = numeric_version("0"), ..., scenario = "", harmonizationPeriod = c(2015, 2050),
-                    yearsSubset = 2015:2150, compression = 2, progress = TRUE) {
+                    yearsSubset = 2015:2100, harmonization = "fade", downscaling = "magpieClassic",
+                    compression = 2, progress = TRUE) {
   stopifnot(...length() == 0)
 
   revision <- if (identical(rev, numeric_version("0"))) format(Sys.time(), "%Y-%m-%d") else rev
@@ -45,6 +48,7 @@ fullESM <- function(rev = numeric_version("0"), ..., scenario = "", harmonizatio
   calcOutput("StatesNC", outputFormat = "ESM",
              harmonizationPeriod = harmonizationPeriod,
              yearsSubset = yearsSubset,
+             harmonization = harmonization, downscaling = downscaling,
              aggregate = FALSE, file = ncFile, writeArgs = writeArgs)
   do.call(toolAddMetadataNC, c(ncFile = ncFile, metadataArgs))
 
@@ -52,6 +56,7 @@ fullESM <- function(rev = numeric_version("0"), ..., scenario = "", harmonizatio
   calcOutput("ManagementNC", outputFormat = "ESM",
              harmonizationPeriod = harmonizationPeriod,
              yearsSubset = yearsSubset,
+             harmonization = harmonization, downscaling = downscaling,
              aggregate = FALSE, file = ncFile, writeArgs = writeArgs)
   do.call(toolAddMetadataNC, c(ncFile = ncFile, metadataArgs))
 
@@ -59,6 +64,7 @@ fullESM <- function(rev = numeric_version("0"), ..., scenario = "", harmonizatio
   calcOutput("TransitionsNC", outputFormat = "ESM",
              harmonizationPeriod = harmonizationPeriod,
              yearsSubset = yearsSubset,
+             harmonization = harmonization, downscaling = downscaling,
              aggregate = FALSE, file = ncFile, writeArgs = writeArgs)
   do.call(toolAddMetadataNC, c(ncFile = ncFile, metadataArgs))
 

@@ -4,7 +4,13 @@
 \alias{calcManagementNC}
 \title{calcManagementNC}
 \usage{
-calcManagementNC(outputFormat, harmonizationPeriod, yearsSubset)
+calcManagementNC(
+  outputFormat,
+  harmonizationPeriod,
+  yearsSubset,
+  harmonization,
+  downscaling
+)
 }
 \arguments{
 \item{outputFormat}{options: ESM, ScenarioMIP}
@@ -14,6 +20,10 @@ year the target dataset is used, after the second given year the input
 dataset is used, in between harmonize between the two datasets}
 
 \item{yearsSubset}{remove years from the returned data which are not in yearsSubset}
+
+\item{harmonization}{name of harmonization method, see \code{\link{toolGetHarmonizer}}}
+
+\item{downscaling}{name of downscaling method, currently only "magpieClassic"}
 }
 \value{
 data prepared to be written as a LUH-style management.nc file

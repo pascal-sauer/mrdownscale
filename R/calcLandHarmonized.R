@@ -10,9 +10,9 @@
 #' @param harmonizationPeriod Two integer values, before the first given
 #' year the target dataset is used, after the second given year the input
 #' dataset is used, in between harmonize between the two datasets
-#' @param method transitioning method
+#' @param harmonization name of harmonization method, see \code{\link{toolGetHarmonizer}}
 #' @author Pascal Sauer, Jan Philipp Dietrich
-calcLandHarmonized <- function(input, target, harmonizationPeriod, method = "fade") {
+calcLandHarmonized <- function(input, target, harmonizationPeriod, harmonization) {
   xInput <- calcOutput("LandInputRecategorized", input = input, target = target, aggregate = FALSE)
   geometry <- attr(xInput, "geometry")
   crs <- attr(xInput, "crs")
@@ -28,7 +28,9 @@ calcLandHarmonized <- function(input, target, harmonizationPeriod, method = "fad
   toolExpectLessDiff(inSum[, 1, ], tSum[, 1, ], 10^-5,
                      "Total areas are the same in target and input data")
 
-  harmonizer <- toolGetHarmonizer(method)
+  xInput <- toolEqualizeArea(xInput, xTarget[, harmonizationPeriod[1], ])
+
+  harmonizer <- toolGetHarmonizer(harmonization)
   out <- harmonizer(xInput, xTarget, harmonizationPeriod = harmonizationPeriod)
 
   attr(out, "geometry") <- geometry

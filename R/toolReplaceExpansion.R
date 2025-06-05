@@ -14,9 +14,10 @@
 #' that expansion was replaced
 #' @param warnThreshold expansion greater than this will trigger a warning
 #' that expanding considerably
+#' @param level passed to toolStatusMessage
 #' @return a magpie object with expansion of 'from' replaced by 'to'
 #' @author Pascal Sauer
-toolReplaceExpansion <- function(x, from, to, ..., noteThreshold = 10^-10, warnThreshold = 10^-5) {
+toolReplaceExpansion <- function(x, from, to, ..., noteThreshold = 10^-10, warnThreshold = 10^-5, level = 1) {
   if (!from %in% getItems(x, dim = 3)) {
     return(x)
   }
@@ -37,11 +38,11 @@ toolReplaceExpansion <- function(x, from, to, ..., noteThreshold = 10^-10, warnT
 
   if (maxDiff > warnThreshold) {
     toolStatusMessage("warn", paste0(from, " is expanding considerably ",
-                                     "(max expansion: ", signif(maxDiff, 3), ")"), level = 1)
+                                     "(max expansion: ", signif(maxDiff, 3), ")"), level = level)
   }
 
   if (maxDiff > noteThreshold) {
-    toolStatusMessage("note", paste("replaced", from, "expansion with", to, "expansion"), level = 1)
+    toolStatusMessage("note", paste("replaced", from, "expansion with", to, "expansion"), level = level)
   }
 
   return(x)

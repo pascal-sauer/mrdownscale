@@ -13,10 +13,10 @@
 #' @param harmonizationPeriod Two integer values, before the first given
 #' year the target dataset is used, after the second given year the input
 #' dataset is used, in between harmonize between the two datasets
-#' @param method harmonization method, see \code{\link{toolGetHarmonizer}} for available methods
+#' @param harmonization harmonization method, see \code{\link{toolGetHarmonizer}} for available methods
 #' @return harmonized nonland data
 #' @author Pascal Sauer
-calcNonlandHarmonized <- function(input, target, harmonizationPeriod, method) {
+calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonization) {
   xInput <- calcOutput("NonlandInputRecategorized", input = input, target = target, aggregate = FALSE)
   geometry <- attr(xInput, "geometry")
   crs <- attr(xInput, "crs")
@@ -43,7 +43,7 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, method) {
   stopifnot(is.finite(kgCPerMhaTarget), kgCPerMhaTarget >= 0)
   getItems(kgCPerMhaTarget, 3) <- sub("bioh$", "kgC_per_Mha", getItems(kgCPerMhaTarget, 3))
 
-  harmonizer <- toolGetHarmonizer(method)
+  harmonizer <- toolGetHarmonizer(harmonization)
   out <- harmonizer(mbind(xInput[, , woodHarvestAreaCategories(), invert = TRUE],
                           kgCPerMhaInput),
                     mbind(xTarget[, , woodHarvestAreaCategories(), invert = TRUE],
@@ -51,7 +51,7 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, method) {
                     harmonizationPeriod = harmonizationPeriod)
 
   harvestArea <- calcOutput("WoodHarvestAreaHarmonized", input = input, target = target,
-                            harmonizationPeriod = harmonizationPeriod, method = method, aggregate = FALSE)
+                            harmonizationPeriod = harmonizationPeriod, harmonization = harmonization, aggregate = FALSE)
 
   # adapt bioh to harmonized harvest area
   kgCPerMhaHarmonized <- out[, , getItems(kgCPerMhaTarget, 3)]

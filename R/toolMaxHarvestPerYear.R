@@ -4,8 +4,7 @@
 #' (dividing by timestep length) based on the given land data.
 #'
 #' @param land magpie object with at least the following categories:
-#' c("primf", "secdf", "pltns_added_treecover",
-#'   "pltns_excl_added_treecover", "primn", "secdn")
+#' c("primf", "secdf", "pltns", "primn", "secdn")
 #' @param split if TRUE: split secdf to secyf and secdmf,
 #' rename secdf to secnf, and append "_wood_harvest_area" to names
 #' @return magpie object with the maximum possible yearly wood harvest area
@@ -15,9 +14,6 @@ toolMaxHarvestPerYear <- function(land, split = TRUE) {
   timestepLength <- new.magpie(years = getYears(land)[-1],
                                fill = diff(getYears(land, as.integer = TRUE)))
   stopifnot(timestepLength > 0)
-
-  land <- add_columns(land, "pltns")
-  land[, , "pltns"] <- dimSums(land[, , c("pltns_added_treecover", "pltns_excl_added_treecover")])
 
   land <- land[, , c("primf", "secdf", "pltns", "primn", "secdn")]
   if (split) {

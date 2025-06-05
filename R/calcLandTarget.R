@@ -87,14 +87,9 @@ calcLandTarget <- function(target) {
       pltnsShare <- as.SpatRaster(pltnsShare)
       pltnsShare <- terra::crop(pltnsShare, out, extend = TRUE)
       pltns <- out["secdf"] * pltnsShare
-      names(pltns) <- sub("secdf", "pltns_excl_added_treecover", names(pltns))
+      names(pltns) <- sub("secdf", "pltns", names(pltns))
       secdf <- out["secdf"] - pltns
-
-      # LUH3 includes addtc, but it's all zeros...
-      addedTreecover <- 0 * pltns
-      names(addedTreecover) <- sub("pltns_excl_added_treecover", "pltns_added_treecover", names(addedTreecover))
-
-      out <- c(out[[!grepl("secdf", names(out))]], pltns, addedTreecover, secdf)
+      out <- c(out[[!grepl("secdf", names(out))]], pltns, secdf)
 
       # cannot cache SpatRaster with both in-memory and on-disk/file sources,
       # so write `out` to a tif file to get SpatRaster with a single source (the tif file)

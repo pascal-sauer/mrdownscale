@@ -14,8 +14,8 @@
 toolCheckWoodHarvestArea <- function(harvest, land, notePrefix = "") {
   stopifnot(setequal(getItems(harvest, 1), getItems(land, 1)))
   harvest <- toolAggregateWoodHarvest(harvest)
-
-  stopifnot(identical(getYears(harvest), getYears(land)))
+  stopifnot(getItems(harvest, 3) %in% getItems(land, 3),
+            identical(getYears(harvest), getYears(land)))
   years <- getYears(land, as.integer = TRUE)
 
   maxHarvestPerYear <- toolMaxHarvestPerYear(land, split = FALSE)

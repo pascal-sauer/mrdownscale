@@ -4,7 +4,14 @@
 \alias{calcNonlandHighRes}
 \title{calcNonlandHighRes}
 \usage{
-calcNonlandHighRes(input, target, harmonizationPeriod, yearsSubset)
+calcNonlandHighRes(
+  input,
+  target,
+  harmonizationPeriod,
+  yearsSubset,
+  harmonization,
+  downscaling
+)
 }
 \arguments{
 \item{input}{name of an input dataset, currently only "magpie"}
@@ -16,6 +23,10 @@ year the target dataset is used, after the second given year the input
 dataset is used, in between harmonize between the two datasets}
 
 \item{yearsSubset}{vector of years to keep in the output dataset}
+
+\item{harmonization}{name of harmonization method, see \code{\link{toolGetHarmonizer}}}
+
+\item{downscaling}{name of downscaling method, currently only "magpieClassic"}
 }
 \value{
 downscaled nonland data
@@ -35,7 +46,8 @@ the harmonization period as weight.
 \examples{
 \dontrun{
   calcOutput("NonlandHighRes", input = "magpie", target = "luh2mod",
-             harmonizationPeriod = c(2015, 2050), yearsSubset = 2015:2100)
+             harmonizationPeriod = c(2015, 2050), yearsSubset = 2015:2100,
+             harmonization = "fade", downscaling = "magpieClassic")
 }
 }
 \author{
