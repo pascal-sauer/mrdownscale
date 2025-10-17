@@ -23,10 +23,15 @@ fullDOWNSCALEDMAGPIE <- function(rev = numeric_version("0"),
   }
 
   # LandReport with outputFormat = downscaledmagpie assumes target = landuseinit
-  calcOutput("LandReport", outputFormat = "downscaledmagpie", input = "magpie",
+  calcOutput("LandMZ", outputFormat = "downscaledmagpie", input = "magpie",
              harmonizationPeriod = harmonizationPeriod, yearsSubset = seq(1995, 2100, 5),
              harmonization = harmonization, downscaling = downscaling,
              aggregate = FALSE, file = "cell.land_0.5.mz")
+
+  calcOutput("CropareaMZ", outputFormat = "downscaledmagpie", input = "magpie",
+             harmonizationPeriod = harmonizationPeriod, yearsSubset = seq(1995, 2100, 5),
+             harmonization = harmonization, downscaling = downscaling,
+             aggregate = FALSE, file = "cell.croparea_0.5_share.mz")
 
   toolWriteMadratLog(logPath = "consistencyCheck.log")
 }
