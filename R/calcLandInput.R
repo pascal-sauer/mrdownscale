@@ -31,6 +31,7 @@ calcLandInput <- function(input) { # before adding args, consider: many function
     toolExpectLessDiff(land[, , "crop_area"],
                        dimSums(crop, dim = 3),
                        10^-5, "sum over all crops equals crop_area")
+    land[, , "crop_area"] <- dimSums(crop, dim = 3) # ensure they are actually identical to avoid dividing by zero
 
     # in case we have no crop_area, but fallow and/or treecover: assign to bio energy trees
     fallowTreecover <- dimSums(land[, , c("crop_fallow", "crop_treecover")], 3)
