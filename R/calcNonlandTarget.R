@@ -17,7 +17,7 @@ calcNonlandTarget <- function(target, endOfHistory) {
 }
 
 calcNonlandTargetComplete <- function(target) {
-  if (target %in% c("luh2", "luh2mod", "luh3")) {
+  if (target %in% c("luh2", "luh2mod", "luh3pltns")) {
     if (target %in% c("luh2", "luh2mod")) {
       cellAreaKm2 <- readSource("LUH2v2h", subtype = "cellArea", convert = FALSE)
       management <- readSource("LUH2v2h", subtype = "management", convert = FALSE)

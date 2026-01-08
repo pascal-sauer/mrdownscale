@@ -25,7 +25,7 @@ calcNonlandReport <- function(outputFormat, harmonizationPeriod, yearsSubset, ha
       target <- "luh2mod"
       cellAreaKm2 <- readSource("LUH2v2h", subtype = "cellArea", convert = FALSE)
     } else if (outputFormat == "ScenarioMIP") {
-      target <- "luh3"
+      target <- "luh3pltns"
       cellAreaKm2 <- readSource("LUH3", subtype = "cellArea", convert = FALSE)
     }
     x <- calcOutput("NonlandHighRes", input = input, target = target,

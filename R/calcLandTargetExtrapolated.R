@@ -34,7 +34,7 @@ calcLandTargetExtrapolated <- function(input, target, harmonizationPeriod) {
                     harmonizationPeriod = hp, aggregate = FALSE)
 
   harvest <- NULL
-  if (input %in% c("magpie") && target %in% c("luh2mod", "luh3")) {
+  if (input %in% c("magpie") && target %in% c("luh2mod", "luh3pltns")) {
     # ------- calculate wood harvest shares -------
     harvestHist <- calcOutput("NonlandTargetLowRes", input = input, target = target,
                               endOfHistory = hp[1], aggregate = FALSE)

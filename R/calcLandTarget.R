@@ -3,8 +3,8 @@
 #' Prepare the high resolution target land use dataset for
 #' harmonization and downscaling, checking data for consistency before returning.
 #'
-#' @param target name of the target dataset, one of luh2, luh2mod, luh3
-#' luh2mod/luh3 will split secdf into pltns and secdf
+#' @param target name of the target dataset, one of luh2, luh2mod, luh3pltns
+#' luh2mod/luh3pltns will split secdf into pltns and secdf
 #' @param endOfHistory years later than this are not returned
 #' @return land target data
 #' @author Pascal Sauer
@@ -17,11 +17,11 @@ calcLandTarget <- function(target, endOfHistory) {
 }
 
 calcLandTargetComplete <- function(target) {
-  if (target %in% c("luh2", "luh2mod", "luh3")) {
+  if (target %in% c("luh2", "luh2mod", "luh3pltns")) {
     cropTypes <- c("c3ann", "c3nfx", "c3per", "c4ann", "c4per")
     per <- c("c3per", "c4per")
 
-    if (target == "luh3") {
+    if (target == "luh3pltns") {
       states <- readSource("LUH3", subtype = "states", subset = 1995:2024)
     } else {
       states <- readSource("LUH2v2h", subtype = "states")
@@ -30,7 +30,7 @@ calcLandTargetComplete <- function(target) {
                                   value = TRUE, invert = TRUE)]]
     states <- spatRasterToDataset(states)
 
-    if (target == "luh3") {
+    if (target == "luh3pltns") {
       man <- readSource("LUH3", subtype = "management", subset = 1995:2024, convert = FALSE)
       man <- man["irrig|cpbf1"]
       man <- spatRasterToDataset(man)
@@ -90,7 +90,7 @@ calcLandTargetComplete <- function(target) {
     # cannot use withr::local_tempfile because the SpatRaster is invalid as soon as the underlying file is deleted
     out <- terra::writeRaster(out, filename = tempfile(fileext = ".tif"))
 
-    if (target %in% c("luh2mod", "luh3")) {
+    if (target %in% c("luh2mod", "luh3pltns")) {
       # split secdf into pltns and secdf
       pltnsShare <- read.magpie(system.file("extdata/forestryShare.mz", package = "mrdownscale"))
       pltnsShare <- as.SpatRaster(pltnsShare)

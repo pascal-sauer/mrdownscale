@@ -12,7 +12,7 @@
 #' @return land use data
 #' @author Pascal Sauer
 calcLandReportScenarioMIP <- function(input, harmonizationPeriod, yearsSubset, harmonization, downscaling) {
-  landHighRes <- calcOutput("LandHighRes", input = input, target = "luh3",
+  landHighRes <- calcOutput("LandHighRes", input = input, target = "luh3pltns",
                             harmonizationPeriod = harmonizationPeriod, yearsSubset = yearsSubset,
                             harmonization = harmonization, downscaling = downscaling,
                             aggregate = FALSE)
