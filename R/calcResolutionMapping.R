@@ -14,7 +14,7 @@
 #'
 #' @author Pascal Sauer
 calcResolutionMapping <- function(input, target) {
-  if (target == "luh3pltns") {
+  if (target %in% c("luh3", "luh3pltns")) {
     targetGrid <- readSource("LUH3", subtype = "states", subset = 2000)
   } else {
     targetGrid <- calcOutput("LandTargetComplete", target = target, aggregate = FALSE)

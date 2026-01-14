@@ -30,6 +30,18 @@ readLUH3 <- function(subtype, subset) {
                    "c3per", "c4per", "c3nfx", "pastr", "range")
     x <- readLayers("multiple-states_input4MIPs_landState_CMIP_UofMD-landState-3-1-1_gn_0850-2024.nc",
                     variables, years)
+    browser()
+
+    pltns2024 <- readLayers("multiple-states_input4MIPs_landState_CMIP_UofMD-landState-3-1-1_gn_0850-2024.nc",
+                            "pltns", 2024)
+    if (max(terra::minmax(pltns2024, compute = TRUE)) == 0) {
+      # pltns are not really present, they are 0 even on ocean / grid cells that all other variables are NA
+      # TODO
+    } else {
+      pltns <- readLayers("multiple-states_input4MIPs_landState_CMIP_UofMD-landState-3-1-1_gn_0850-2024.nc",
+                          "pltns", years)
+      x <- c(x, pltns)
+    }
     stopifnot(max(terra::minmax(x, compute = TRUE)) <= 1.0001,
               all(terra::units(x) == "1"))
     unit <- "1"

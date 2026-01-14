@@ -17,11 +17,11 @@ calcLandTarget <- function(target, endOfHistory) {
 }
 
 calcLandTargetComplete <- function(target) {
-  if (target %in% c("luh2", "luh2mod", "luh3pltns")) {
+  if (target %in% c("luh2", "luh2mod", "luh3", "luh3pltns")) {
     cropTypes <- c("c3ann", "c3nfx", "c3per", "c4ann", "c4per")
     per <- c("c3per", "c4per")
 
-    if (target == "luh3pltns") {
+    if (target %in% c("luh3", "luh3pltns")) {
       states <- readSource("LUH3", subtype = "states", subset = 1995:2024)
     } else {
       states <- readSource("LUH2v2h", subtype = "states")
@@ -30,7 +30,7 @@ calcLandTargetComplete <- function(target) {
                                   value = TRUE, invert = TRUE)]]
     states <- spatRasterToDataset(states)
 
-    if (target == "luh3pltns") {
+    if (target %in% c("luh3", "luh3pltns")) {
       man <- readSource("LUH3", subtype = "management", subset = 1995:2024, convert = FALSE)
       man <- man["irrig|cpbf1"]
       man <- spatRasterToDataset(man)
