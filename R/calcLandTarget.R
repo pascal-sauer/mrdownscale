@@ -19,7 +19,6 @@ calcLandTarget <- function(target, endOfHistory) {
 calcLandTargetComplete <- function(target) {
   if (target %in% c("luh2", "luh2mod", "luh3")) {
     cropTypes <- c("c3ann", "c3nfx", "c3per", "c4ann", "c4per")
-    per <- c("c3per", "c4per")
 
     if (target == "luh3") {
       states <- readSource("LUH3", subtype = "states", subset = 1995:2024)
@@ -44,70 +43,13 @@ calcLandTargetComplete <- function(target) {
     }
     stopifnot(all.equal(terra::time(states[1]), terra::time(man[1])))
 
-    out <- list(nonCropStates)
-    for (cropType in cropTypes) {
-      cpbf1 <- man[paste0(cpbf1Category, "_", cropType)]
-      irrig <- man[paste0("irrig_", cropType)]
-      stopifnot(all.equal(terra::time(cpbf1), terra::time(states[cropType])),
-                all.equal(terra::time(irrig), terra::time(states[cropType])))
-
-      # cpbf1 is 1st gen biofuel share of <cropType>
-      # -> get <cropType>_biofuel_1st_gen area in Mha by multiplying with <cropType>
-      biofuel1stGen <- cpbf1 * states[cropType]
-
-      irrigatedBiofuel1stGen <- irrig * biofuel1stGen
-      rainfedBiofuel1stGen <- biofuel1stGen - irrigatedBiofuel1stGen
-      names(irrigatedBiofuel1stGen) <- sub("\\.\\..+$", paste0("..", cropType, "_irrigated_biofuel_1st_gen"),
-                                           names(irrigatedBiofuel1stGen))
-      names(rainfedBiofuel1stGen) <- sub("\\.\\..+$", paste0("..", cropType, "_rainfed_biofuel_1st_gen"),
-                                         names(rainfedBiofuel1stGen))
-
-      nonBiofuel <- states[cropType] - biofuel1stGen
-
-      irrigatedBiofuel2ndGen <- NULL
-      rainfedBiofuel2ndGen <- NULL
-      if (cropType %in% per) {
-        # 2nd gen biofuel is not part of LUH2v2h, but we need it for the harmonization, so fill with zeros
-        # 2nd gen biofuel is part of LUH3, but it is all zeros (even over ocean), so instead of reading it...
-        irrigatedBiofuel2ndGen <- 0 * states[cropType]
-        rainfedBiofuel2ndGen <- 0 * states[cropType]
-        names(irrigatedBiofuel2ndGen) <- paste0(names(irrigatedBiofuel2ndGen), "_irrigated_biofuel_2nd_gen")
-        names(rainfedBiofuel2ndGen) <- paste0(names(rainfedBiofuel2ndGen), "_rainfed_biofuel_2nd_gen")
-        nonBiofuel <- nonBiofuel - irrigatedBiofuel2ndGen - rainfedBiofuel2ndGen
-      }
-
-      irrigatedNonBiofuel <- irrig * nonBiofuel
-      rainfedNonBiofuel <- nonBiofuel - irrigatedNonBiofuel
-      names(irrigatedNonBiofuel) <- sub("\\.\\..+$", paste0("..", cropType, "_irrigated"), names(irrigatedNonBiofuel))
-      names(rainfedNonBiofuel) <- sub("\\.\\..+$", paste0("..", cropType, "_rainfed"), names(rainfedNonBiofuel))
-
-      out <- c(out, irrigatedNonBiofuel, rainfedNonBiofuel, irrigatedBiofuel1stGen,
-               rainfedBiofuel1stGen, irrigatedBiofuel2ndGen, rainfedBiofuel2ndGen)
-    }
-    out <- do.call(c, out)
+    out <- do.call(c, c(lapply(cropTypes,
+                               function(cropType) toolSplitIrrigationRainfed(man, cpbf1Category, cropType, states)),
+                        nonCropStates))
     terra::time(out, tstep = "years") <- as.integer(substr(names(out), 2, 5))
-    # need to write raster to disk to avoid memory issues
-    # cannot use withr::local_tempfile because the SpatRaster is invalid as soon as the underlying file is deleted
-    out <- terra::writeRaster(out, filename = tempfile(fileext = ".tif"))
 
     if (target %in% c("luh2mod", "luh3")) {
-      # split secdf into pltns and secdf
-      pltnsShare <- read.magpie(system.file("extdata/forestryShare.mz", package = "mrdownscale"))
-      pltnsShare <- as.SpatRaster(pltnsShare)
-      pltnsShare <- terra::crop(pltnsShare, out, extend = TRUE)
-      pltns <- Reduce(c, lapply(unique(terra::time(out)), function(y) {
-        # find the closest smaller available year, e.g. for 2019 use 2015
-        bestFitYear <- Find(function(a) a <= y, terra::time(pltnsShare), right = TRUE)
-        return(out["secdf"][[terra::time(out) == y]] * pltnsShare[[terra::time(pltnsShare) == bestFitYear]])
-      }))
-      names(pltns) <- sub("secdf", "pltns", names(pltns))
-      stopifnot(terra::nlyr(out["secdf"]) == terra::nlyr(pltns))
-      secdf <- out["secdf"] - pltns
-      out <- c(out[[!grepl("secdf", names(out))]], pltns, secdf)
-
-      # cannot cache SpatRaster with both in-memory and on-disk/file sources,
-      # so write `out` to a tif file to get SpatRaster with a single source (the tif file)
-      out <- terra::writeRaster(out, filename = tempfile(fileext = ".tif"))
+      out <- toolSplitSecdf(out)
     }
     expectedCategories <- unique(toolLandCategoriesMapping(input = "magpie", target = target)$dataOutput)
   } else if (target == "landuseinit") {
@@ -163,4 +105,69 @@ calcLandTargetComplete <- function(target) {
               class = "SpatRaster",
               unit = "Mha",
               description = "Land target data for data harmonization"))
+}
+
+toolSplitIrrigationRainfed <- function(man, cpbf1Category, cropType, states) {
+  cpbf1 <- man[paste0(cpbf1Category, "_", cropType)]
+  irrig <- man[paste0("irrig_", cropType)]
+  stopifnot(all.equal(terra::time(cpbf1), terra::time(states[cropType])),
+            all.equal(terra::time(irrig), terra::time(states[cropType])))
+
+  # cpbf1 is 1st gen biofuel share of <cropType>
+  # -> get <cropType>_biofuel_1st_gen area in Mha by multiplying with <cropType>
+  biofuel1stGen <- cpbf1 * states[cropType]
+
+  irrigatedBiofuel1stGen <- irrig * biofuel1stGen
+  rainfedBiofuel1stGen <- biofuel1stGen - irrigatedBiofuel1stGen
+  names(irrigatedBiofuel1stGen) <- sub("\\.\\..+$", paste0("..", cropType, "_irrigated_biofuel_1st_gen"),
+                                       names(irrigatedBiofuel1stGen))
+  names(rainfedBiofuel1stGen) <- sub("\\.\\..+$", paste0("..", cropType, "_rainfed_biofuel_1st_gen"),
+                                     names(rainfedBiofuel1stGen))
+
+  nonBiofuel <- states[cropType] - biofuel1stGen
+
+  irrigatedBiofuel2ndGen <- NULL
+  rainfedBiofuel2ndGen <- NULL
+  if (cropType %in% c("c3per", "c4per")) {
+    # 2nd gen biofuel is not part of LUH2v2h, but we need it for the harmonization, so fill with zeros
+    # 2nd gen biofuel is part of LUH3, but it is all zeros (even over ocean), so instead of reading it...
+    irrigatedBiofuel2ndGen <- 0 * states[cropType]
+    rainfedBiofuel2ndGen <- 0 * states[cropType]
+    names(irrigatedBiofuel2ndGen) <- paste0(names(irrigatedBiofuel2ndGen), "_irrigated_biofuel_2nd_gen")
+    names(rainfedBiofuel2ndGen) <- paste0(names(rainfedBiofuel2ndGen), "_rainfed_biofuel_2nd_gen")
+    nonBiofuel <- nonBiofuel - irrigatedBiofuel2ndGen - rainfedBiofuel2ndGen
+  }
+
+  irrigatedNonBiofuel <- irrig * nonBiofuel
+  rainfedNonBiofuel <- nonBiofuel - irrigatedNonBiofuel
+  names(irrigatedNonBiofuel) <- sub("\\.\\..+$", paste0("..", cropType, "_irrigated"), names(irrigatedNonBiofuel))
+  names(rainfedNonBiofuel) <- sub("\\.\\..+$", paste0("..", cropType, "_rainfed"), names(rainfedNonBiofuel))
+
+  out <- c(irrigatedNonBiofuel, rainfedNonBiofuel, irrigatedBiofuel1stGen,
+           rainfedBiofuel1stGen, irrigatedBiofuel2ndGen, rainfedBiofuel2ndGen)
+  # need to write raster to disk to avoid memory issues
+  out <- terra::writeRaster(out, tempfile(fileext = ".tif"))
+  return(out)
+}
+
+toolSplitSecdf <- function(x) {
+  pltnsShare <- read.magpie(system.file("extdata/forestryShare.mz", package = "mrdownscale"))
+  pltnsShare <- as.SpatRaster(pltnsShare)
+  pltnsShare <- terra::crop(pltnsShare, x, extend = TRUE)
+
+  bestFitYears <- vapply(unique(terra::time(x)), function(y) {
+    # find the closest smaller available year, e.g. for 2019 use 2015
+    return(Find(function(a) a <= y, terra::time(pltnsShare), right = TRUE))
+  }, integer(1))
+  pltns <- x["secdf"] * pltnsShare[[match(bestFitYears, terra::time(pltnsShare))]]
+
+  names(pltns) <- sub("secdf", "pltns", names(pltns))
+  stopifnot(terra::nlyr(x["secdf"]) == terra::nlyr(pltns))
+  secdf <- x["secdf"] - pltns
+  x <- c(x[[!grepl("secdf", names(x))]], pltns, secdf)
+
+  # cannot cache SpatRaster with both in-memory and on-disk/file sources,
+  # so write `x` to a tif file to get SpatRaster with a single source (the tif file)
+  x <- terra::writeRaster(x, filename = tempfile(fileext = ".tif"))
+  return(x)
 }
