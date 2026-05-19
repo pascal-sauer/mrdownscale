@@ -22,13 +22,13 @@ To integrate a new model into mrdownscale, you will need to create and
 modify five key components. The table below summarizes each step;
 detailed instructions for each follow in the sections below.
 
-| Step | Component | File | Purpose |
-|----|----|----|----|
-| 1 | Reference mapping | `inst/extdata/referenceMappings/coolnewmodel.csv` | Map CoolNewModel variables to fine-grained reference variables |
-| 2 | Read function | `R/readCoolNewModel.R` | Load your model’s data and region mapping via the madrat framework |
-| 3 | Land input calculation | `R/calcLandInput.R` | Read and validate your data for consistency |
-| 4 | Resolution mapping | `R/calcResolutionMapping.R` | Map from regional level to grid level |
-| 5 | Categories mapping tool | `R/toolLandCategoriesMapping.R` | Register your reference mapping in the mapping tool |
+| Step | Component               | File                                              | Purpose                                                            |
+|------|-------------------------|---------------------------------------------------|--------------------------------------------------------------------|
+| 1    | Reference mapping       | `inst/extdata/referenceMappings/coolnewmodel.csv` | Map CoolNewModel variables to fine-grained reference variables     |
+| 2    | Read function           | `R/readCoolNewModel.R`                            | Load your model’s data and region mapping via the madrat framework |
+| 3    | Land input calculation  | `R/calcLandInput.R`                               | Read and validate your data for consistency                        |
+| 4    | Resolution mapping      | `R/calcResolutionMapping.R`                       | Map from regional level to grid level                              |
+| 5    | Categories mapping tool | `R/toolLandCategoriesMapping.R`                   | Register your reference mapping in the mapping tool                |
 
 ## Requirements and Preparation
 
@@ -53,7 +53,6 @@ Before starting, prepare the following files:
 2.  Open R and find your home directory:
 
 ``` r
-
 normalizePath("~")
 ```
 
@@ -61,7 +60,6 @@ normalizePath("~")
     the following content:
 
 ``` r
-
 options(repos = c(runiverse = "https://pik-piam.r-universe.dev",
                   CRAN = "https://cran.rstudio.com/"))
 options(MADRAT_MAINFOLDER = file.path(normalizePath("~"), "madrat_mainfolder"))
@@ -76,7 +74,6 @@ tells madrat where to store its data.
 Start a fresh R session and install the required packages:
 
 ``` r
-
 install.packages(c("mrdownscale", "pkgload"))
 ```
 
@@ -114,7 +111,6 @@ areas are not included), map missing categories to a variable called
 Here’s an example reference mapping from the COFFEE model:
 
 ``` r
-
 cat(readLines(system.file("extdata/referenceMappings/coffee.csv",
                           package = "mrdownscale"), n = 30), sep = "\n")
 #> reference;data
@@ -153,7 +149,6 @@ For detailed technical information about variable mapping, see the
 documentation of the `calcLandInputRecategorized` function:
 
 ``` r
-
 ?mrdownscale:::calcLandInputRecategorized
 ```
 
@@ -169,9 +164,8 @@ structure and create a read function.
 First, check where madrat stores source data:
 
 ``` r
-
 madrat::getConfig("sourcefolder", verbose = FALSE)
-#> [1] "/tmp/RtmpbWlUrO/madrat/sources"
+#> [1] "/tmp/RtmpeTjCMX/madrat/sources"
 ```
 
 In this folder, create a new subfolder called `CoolNewModel` and place
@@ -191,7 +185,6 @@ types, specified via the `subtype` parameter:
 Here’s an example read function to use as a template:
 
 ``` r
-
 mrdownscale:::readWITCH
 #> function (subtype = "data") 
 #> {
@@ -213,7 +206,7 @@ mrdownscale:::readWITCH
 #>         stop("Unexpected subtype, only data and resolutionMapping are accepted")
 #>     }
 #> }
-#> <bytecode: 0x55abc70bcc98>
+#> <bytecode: 0x55a1226c5968>
 #> <environment: namespace:mrdownscale>
 ```
 
@@ -226,7 +219,6 @@ exactly (with “read” prefix). So for “CoolNewModel” folder, name it
 Start a fresh R session and verify your setup works:
 
 ``` r
-
 pkgload::load_all("path/to/mrdownscale")
 x <- readSource("CoolNewModel", subtype = "data")
 print(x)
@@ -244,7 +236,6 @@ loading cached data when nothing has changed.
 Add a conditional branch for your model in `R/calcLandInput.R`:
 
 ``` r
-
 if (input == "magpie") {
   # existing code ...
 } else if (input == "CoolNewModel") {
@@ -275,7 +266,6 @@ transformations to ensure your data meets mrdownscale’s requirements:
 Add a conditional branch for your model in `R/calcResolutionMapping.R`:
 
 ``` r
-
 if (input == "magpie") {
   # existing code ...
 } else if (input == "CoolNewModel") {
@@ -307,7 +297,6 @@ Once all integration steps are complete, you can calculate harmonized
 data on your model’s native regional resolution:
 
 ``` r
-
 harmonized <- calcOutput("LandHarmonized",
                          input = "CoolNewModel",
                          target = "luh3",
@@ -328,7 +317,6 @@ To run the complete pipeline including both harmonization and
 downscaling to grid resolution:
 
 ``` r
-
 pathToTgz <- retrieveData("SCENARIOMIP", input = "CoolNewModel")
 untar(pathToTgz)
 ```

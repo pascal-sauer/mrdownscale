@@ -34,7 +34,6 @@ To harmonize and downscale MAgPIE data using LUH2v2h as target dataset
 run the following:
 
 ``` r
-
 library(mrdownscale)
 madrat::setConfig(mainfolder = "./madrat_mainfolder")
 madrat::retrieveData("ESM", puc = FALSE)

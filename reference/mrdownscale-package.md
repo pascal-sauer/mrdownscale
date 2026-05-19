@@ -16,11 +16,15 @@ Useful links:
 ## Author
 
 **Maintainer**: Pascal Sauer <pascal.sauer@pik-potsdam.de>
-([ORCID](https://orcid.org/0000-0002-6856-8239)) (Potsdam Institute for
-Climate Impact Research)
+([ORCID](https://orcid.org/0000-0002-6856-8239)) (affiliation: Potsdam
+Institute for Climate Impact Research)
 
 Authors:
 
+- Pascal Sauer <pascal.sauer@pik-potsdam.de>
+  ([ORCID](https://orcid.org/0000-0002-6856-8239)) (affiliation: Potsdam
+  Institute for Climate Impact Research)
+
 - Jan Philipp Dietrich <dietrich@pik-potsdam.de>
-  ([ORCID](https://orcid.org/0000-0002-4309-6431)) (Potsdam Institute
-  for Climate Impact Research)
+  ([ORCID](https://orcid.org/0000-0002-4309-6431)) (affiliation: Potsdam
+  Institute for Climate Impact Research)
