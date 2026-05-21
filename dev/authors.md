@@ -16,13 +16,13 @@ Source:
 [`DESCRIPTION`](https://github.com/pik-piam/mrdownscale/blob/main/DESCRIPTION)
 
 Sauer P, Dietrich J (2026). *mrdownscale: Downscale and harmonize land
-use data*. R package version 0.50.0.9001,
+use data*. R package version 0.51.0.9001,
 <https://github.com/pik-piam/mrdownscale>.
 
     @Manual{,
       title = {mrdownscale: Downscale and harmonize land use data},
       author = {Pascal Sauer and Jan Philipp Dietrich},
       year = {2026},
-      note = {R package version 0.50.0.9001},
+      note = {R package version 0.51.0.9001},
       url = {https://github.com/pik-piam/mrdownscale},
     }

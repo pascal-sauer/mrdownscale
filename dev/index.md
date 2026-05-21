@@ -1,6 +1,6 @@
 # Downscale and harmonize land use data
 
-R package **mrdownscale**, version **0.50.0.9001**
+R package **mrdownscale**, version **0.51.0**
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11244475.svg)](https://doi.org/10.5281/zenodo.11244475)
 [![R build
@@ -62,7 +62,7 @@ To cite package **mrdownscale** in publications use:
 
 Sauer P, Dietrich J (2026). “mrdownscale: Downscale and harmonize land
 use data.” <doi:10.5281/zenodo.11244475>
-<https://doi.org/10.5281/zenodo.11244475>, Version: 0.50.0.9001,
+<https://doi.org/10.5281/zenodo.11244475>, Version: 0.51.0,
 <https://github.com/pik-piam/mrdownscale>.
 
 A BibTeX entry for LaTeX users is
@@ -75,7 +75,7 @@ A BibTeX entry for LaTeX users is
  date = {2026-05-19},
  year = {2026},
  url = {https://github.com/pik-piam/mrdownscale},
- note = {Version: 0.50.0.9001},
+ note = {Version: 0.51.0},
 }
 ```
 

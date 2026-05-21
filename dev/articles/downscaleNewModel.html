@@ -23,7 +23,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">mrdownscale</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.50.0.9001</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.51.0.9001</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -273,7 +273,7 @@ structure and create a read function.</p>
 <p>First, check where madrat stores source data:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">madrat</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/madrat/man/getConfig.html" class="external-link">getConfig</a></span><span class="op">(</span><span class="st">"sourcefolder"</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "/tmp/Rtmp3JxF2S/madrat/sources"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "/tmp/Rtmp3Gi32p/madrat/sources"</span></span></code></pre></div>
 <p>In this folder, create a new subfolder called
 <code>CoolNewModel</code> and place your data files and region mapping
 file there.</p>
@@ -315,7 +315,7 @@ mapping file and returns it as a data frame</li>
 <span><span class="co">#&gt;         stop("Unexpected subtype, only data and resolutionMapping are accepted")</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x5638c0035188&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x55ff2c669e48&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:mrdownscale&gt;</span></span></code></pre></div>
 <p><strong>Important:</strong> The function name must match your source
 folder name exactly (with “read” prefix). So for “CoolNewModel” folder,
