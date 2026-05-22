@@ -1,9 +1,9 @@
 # fullESM
 
 Run the pipeline to generate harmonized and downscaled data to report
-for the RESCUE, OptimESM and other projects where ESM compatible land
-use inputs are required. Write .nc files, print full report on
-consistency checks and write it to report.log.
+for RESCUE and other projects where ESM compatible land use inputs are
+required. Write .nc files, print full report on consistency checks and
+write it to report.log.
 
 ## Usage
 
@@ -11,7 +11,7 @@ consistency checks and write it to report.log.
 fullESM(
   rev = numeric_version("0"),
   input = "magpie",
-  scenario = "",
+  fileNamePart = "",
   harmonizationPeriod = c(2015, 2050),
   yearsSubset = 2015:2100,
   harmonization = "fade",
@@ -33,9 +33,11 @@ fullESM(
 
   name of an input dataset, options: "magpie", "witch"
 
-- scenario:
+- fileNamePart:
 
-  scenario name to be included in filenames
+  scenario nc files will be called
+  multiple-\[type\]\_\[fileNamePart\]-\[revision\]\_gn\_\[min(yearsSubset)\]-\[max(yearsSubset)\].nc
+  where type is one of states/management/transitions
 
 - harmonizationPeriod:
 
