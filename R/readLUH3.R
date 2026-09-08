@@ -5,15 +5,21 @@
 #' For the transitions subtype, only the wood harvest categories bioh and harv are read. To
 #' match magpie semantics years are shifted by 1 when reading transitions.
 #' The LUH3 nc files have day-based time, which is converted to years.
+#' Data is aggregated from 0.25 to 1 degree, with shares and intensities being
+#' aggregated as cell-area weighted means and totals (cellArea, *_bioh) as sums.
 #'
 #' @param subtype one of states, management, transitions, cellArea
 #' @param subset which years to read
-#' @return data read from LUH3 historic nc files as SpatRaster
+#' @return data read from LUH3 historic nc files as SpatRaster, aggregated to 1 degree
 #'
 #' @author Pascal Sauer
 readLUH3 <- function(subtype, subset) {
+  aggFact <- 4 # aggregation factor, 4 means 0.25deg cells aggregated to 1deg (1deg cell ~= 4x4=16 0.25deg cells)
+
+  cellAreaKm2 <- terra::rast("multiple-static_input4MIPs_landState_CMIP_UofMD-landState-3-1-1_gn.nc", "carea")
   if (subtype == "cellArea") {
-    cellArea <- terra::rast("multiple-static_input4MIPs_landState_CMIP_UofMD-landState-3-1-1_gn.nc", "carea")
+    cellArea <- aggregateRaster(cellAreaKm2, aggFact, fun = "sum")
+    terra::units(cellArea) <- "km2"
     return(list(x = cellArea, class = "SpatRaster", cache = FALSE, unit = "km2"))
   }
 
@@ -76,8 +82,31 @@ readLUH3 <- function(subtype, subset) {
   }
   names(x) <- paste0("y", terra::time(x), "..", sub("_[0-9]+$", "", names(x)))
 
+  layerUnits <- terra::units(x)
+  bioh <- grep("_bioh$", names(x))
+  if (length(bioh) > 0) {
+    # aggregate shares as cell-area weighted means, totals (bioh) as sums
+    x <- c(aggregateRaster(x[[setdiff(seq_len(terra::nlyr(x)), bioh)]], aggFact, cellAreaKm2 = cellAreaKm2),
+           aggregateRaster(x[[bioh]], aggFact, fun = "sum"))
+  } else {
+    x <- aggregateRaster(x, aggFact, cellAreaKm2 = cellAreaKm2)
+  }
+  terra::units(x) <- layerUnits
+
   return(list(x = x,
               class = "SpatRaster",
               cache = FALSE,
               unit = unit))
+}
+
+# aggregate a SpatRaster, either as cell-area weighted mean
+# (for shares and intensities) or as sum (for totals such as cellArea and *_bioh)
+aggregateRaster <- function(x, fact, cellAreaKm2 = NULL, fun = c("weightedMean", "sum")) {
+  fun <- match.arg(fun)
+  if (fun == "sum") {
+    return(terra::aggregate(x, fact = fact, fun = "sum", na.rm = TRUE))
+  }
+  stopifnot(!is.null(cellAreaKm2))
+  return(terra::aggregate(x * cellAreaKm2, fact = fact, fun = "sum", na.rm = TRUE) /
+           terra::aggregate(cellAreaKm2, fact = fact, fun = "sum", na.rm = TRUE))
 }

@@ -158,6 +158,14 @@ toolSplitSecdf <- function(x) {
   pltnsShare <- read.magpie(system.file("extdata/forestryShare.mz", package = "mrdownscale"))
   pltnsShare <- as.SpatRaster(pltnsShare)
   pltnsShare <- terra::crop(pltnsShare, x, extend = TRUE)
+  if (terra::nrow(pltnsShare) != terra::nrow(x) || terra::ncol(pltnsShare) != terra::ncol(x)) {
+    # aggregate to resolution of x, weighting by cell area
+    fact <- round(terra::res(x)[1] / terra::res(pltnsShare)[1])
+    stopifnot(fact > 1, identical(as.vector(terra::ext(pltnsShare)), as.vector(terra::ext(x))))
+    cellAreaHa <- terra::mask(terra::cellSize(pltnsShare, unit = "ha"), pltnsShare)
+    pltnsShare <- terra::aggregate(pltnsShare * cellAreaHa, fact = fact, fun = "sum", na.rm = TRUE) /
+      terra::aggregate(cellAreaHa, fact = fact, fun = "sum", na.rm = TRUE)
+  }
 
   bestFitYears <- vapply(unique(terra::time(x)), function(y) {
     # find the closest smaller available year, e.g. for 2019 use 2015

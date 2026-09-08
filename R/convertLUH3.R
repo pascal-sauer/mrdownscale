@@ -9,7 +9,7 @@ convertLUH3 <- function(x, subtype) {
     stop("for subtype != states pass convert = FALSE")
   }
 
-  cellAreaKm2 <- terra::rast("multiple-static_input4MIPs_landState_CMIP_UofMD-landState-3-1-1_gn.nc", "carea")
+  cellAreaKm2 <- readSource("LUH3", subtype = "cellArea", subset = NULL, convert = FALSE)
   stopifnot(terra::units(cellAreaKm2) == "km2")
   # convert from km2 to Mha
   cellAreaMha <- cellAreaKm2 / 10000
