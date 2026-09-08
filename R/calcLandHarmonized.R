@@ -9,7 +9,10 @@
 #' @param target name of the land target source to be used
 #' @param harmonizationPeriod Two integer values, before the first given
 #' year the target dataset is used, after the second given year the input
-#' dataset is used, in between harmonize between the two datasets
+#' dataset is used, in between harmonize between the two datasets.
+#' For harmonization = "absoluteChanges" this must instead be a single
+#' integer value, the harmonization year, which must be present in the target
+#' dataset.
 #' @param harmonization name of harmonization method, see \code{\link{toolGetHarmonizer}}
 #' @author Pascal Sauer, Jan Philipp Dietrich
 calcLandHarmonized <- function(input, target, harmonizationPeriod, harmonization) {
@@ -17,8 +20,22 @@ calcLandHarmonized <- function(input, target, harmonizationPeriod, harmonization
   geometry <- attr(xInput, "geometry")
   crs <- attr(xInput, "crs")
 
-  xTarget <- calcOutput("LandTargetExtrapolated", input = input, target = target,
-                        harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
+  if (length(harmonizationPeriod) == 1) {
+    if (harmonization != "absoluteChanges") {
+      stop("harmonizationPeriod must be a vector of two years for harmonization = \"",
+           harmonization, "\"")
+    }
+    # absoluteChanges only uses the target data up to the harmonization year,
+    # no extrapolation is needed
+    xTarget <- calcOutput("LandTargetLowRes", input = input, target = target,
+                          endOfHistory = harmonizationPeriod, aggregate = FALSE)
+  } else {
+    if (harmonization == "absoluteChanges") {
+      stop("harmonizationPeriod must be a single year for harmonization = \"absoluteChanges\"")
+    }
+    xTarget <- calcOutput("LandTargetExtrapolated", input = input, target = target,
+                          harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
+  }
 
   # checks and corrections
   inSum <- dimSums(xInput, dim = 3)
@@ -52,19 +69,23 @@ calcLandHarmonized <- function(input, target, harmonizationPeriod, harmonization
                      xTarget[, getYears(xTarget, as.integer = TRUE) <= harmonizationPeriod[1], ],
                      10^-5, "Returning reference data before harmonization period")
 
-  outAfterHarmonization <- out[, getYears(out, as.integer = TRUE) >= harmonizationPeriod[2], ]
-  inputAfterHarmonization <- xInput[, getYears(xInput, as.integer = TRUE) >= harmonizationPeriod[2], ]
-  nonprimfix <- setdiff(getItems(out, dim = 3), c("primf", "primn", "secdf", "secdn"))
-  toolExpectLessDiff(outAfterHarmonization[, , nonprimfix],
-                     inputAfterHarmonization[, , nonprimfix],
-                     10^-5, "Returning input data after harmonization period (not checking primf/primn/secdf/secdn)")
-  toolExpectLessDiff(dimSums(outAfterHarmonization[, , c("primf", "secdf")], 3),
-                     dimSums(inputAfterHarmonization[, , c("primf", "secdf")], 3),
-                     10^-5, "Returning input data after harmonization period (checking primf + secdf)")
-  if ("primn" %in% getItems(out, 3)) {
-    toolExpectLessDiff(dimSums(outAfterHarmonization[, , c("primn", "secdn")], 3),
-                       dimSums(inputAfterHarmonization[, , c("primn", "secdn")], 3),
-                       10^-5, "Returning input data after harmonization period (checking primn + secdn)")
+  if (length(harmonizationPeriod) == 2) {
+    outAfterHarmonization <- out[, getYears(out, as.integer = TRUE) >= harmonizationPeriod[2], ]
+    inputAfterHarmonization <- xInput[, getYears(xInput, as.integer = TRUE) >= harmonizationPeriod[2], ]
+    nonprimfix <- setdiff(getItems(out, dim = 3), c("primf", "primn", "secdf", "secdn"))
+    toolExpectLessDiff(outAfterHarmonization[, , nonprimfix],
+                       inputAfterHarmonization[, , nonprimfix],
+                       10^-5,
+                       "Returning input data after harmonization period (not checking primf/primn/secdf/secdn)")
+    toolExpectLessDiff(dimSums(outAfterHarmonization[, , c("primf", "secdf")], 3),
+                       dimSums(inputAfterHarmonization[, , c("primf", "secdf")], 3),
+                       10^-5, "Returning input data after harmonization period (checking primf + secdf)")
+    if ("primn" %in% getItems(out, 3)) {
+      toolExpectLessDiff(dimSums(outAfterHarmonization[, , c("primn", "secdn")], 3),
+                         dimSums(inputAfterHarmonization[, , c("primn", "secdn")], 3),
+                         10^-5,
+                         "Returning input data after harmonization period (checking primn + secdn)")
+    }
   }
 
   return(list(x = out,
