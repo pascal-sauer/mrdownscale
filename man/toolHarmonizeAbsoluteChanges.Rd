@@ -4,7 +4,7 @@
 \alias{toolHarmonizeAbsoluteChanges}
 \title{toolHarmonizeAbsoluteChanges}
 \usage{
-toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod, level = 1)
+toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod, level = 3)
 }
 \arguments{
 \item{xInput}{magpie object with the data to take absolute changes from,
@@ -17,12 +17,20 @@ xInput and xTarget; before this year the target dataset is used, from this
 year onward the target value at harmonizationPeriod plus the absolute
 change of the input data (relative to harmonizationPeriod) is used}
 
-\item{level}{passed to toolReplaceExpansion}
+\item{level}{passed to toolReplaceExpansion and (offset by one) to the
+toolStatusMessage calls in this function, see \code{\link{toolStatusMessage}}}
 }
 \value{
-magpie object with harmonized data, negative values are clamped to
-0 and each region/timestep is renormalized to keep the total area constant,
-emitting a warning if any clamping happened
+magpie object with harmonized data. Negative values are clamped to
+0, a warning is emitted if any clamping happened. The resulting surplus is
+then redistributed: it is taken proportionally from the categories that
+still have a positive value, excluding primf and primn, so the
+absolute-change signal of primf/primn is preserved exactly. If the
+surplus cannot be fully absorbed this way (e.g. because the eligible
+categories do not have enough headroom), the previous behavior of
+renormalizing all categories of the affected cell/timestep proportionally
+is used as a fallback, emitting a note reporting how often this happened.
+Each cell/timestep total area is kept constant throughout.
 }
 \description{
 Harmonize datasets by applying the absolute changes of the input data

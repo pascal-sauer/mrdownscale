@@ -20,14 +20,15 @@ calcLandHarmonized <- function(input, target, harmonizationPeriod, harmonization
   crs <- attr(xInput, "crs")
 
   hp1 <- harmonizationPeriod[1]
-  if (harmonization == "absoluteChanges") {
+  hasHarmonizationPeriod2 <- length(harmonizationPeriod) == 2
+  if (hasHarmonizationPeriod2) {
+    xTarget <- calcOutput("LandTargetExtrapolated", input = input, target = target,
+                          harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
+  } else {
     stopifnot(length(harmonizationPeriod) == 1)
     xTarget <- calcOutput("LandTargetLowRes", input = input, target = target,
                           endOfHistory = harmonizationPeriod, aggregate = FALSE)
     stopifnot(harmonizationPeriod %in% getYears(xTarget, as.integer = TRUE))
-  } else {
-    xTarget <- calcOutput("LandTargetExtrapolated", input = input, target = target,
-                          harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
   }
 
   # checks and corrections
@@ -62,7 +63,7 @@ calcLandHarmonized <- function(input, target, harmonizationPeriod, harmonization
                      xTarget[, getYears(xTarget, as.integer = TRUE) <= hp1, ],
                      10^-5, "Returning reference data before harmonization period")
 
-  if (harmonization != "absoluteChanges") {
+  if (hasHarmonizationPeriod2) {
     outAfterHarmonization <- out[, getYears(out, as.integer = TRUE) >= harmonizationPeriod[2], ]
     inputAfterHarmonization <- xInput[, getYears(xInput, as.integer = TRUE) >= harmonizationPeriod[2], ]
     nonprimfix <- setdiff(getItems(out, dim = 3), c("primf", "primn", "secdf", "secdn"))

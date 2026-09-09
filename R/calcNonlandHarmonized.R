@@ -19,6 +19,10 @@
 #' @return harmonized nonland data
 #' @author Pascal Sauer
 calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonization) {
+  if (harmonization == "absoluteChanges") {
+    stop("Unsupported harmonization method \"", harmonization, "\", ",
+         "absoluteChanges is only supported for land harmonization")
+  }
   hp <- harmonizationPeriod
   xInput <- calcOutput("NonlandInputRecategorized", input = input, target = target, aggregate = FALSE)
   geometry <- attr(xInput, "geometry")

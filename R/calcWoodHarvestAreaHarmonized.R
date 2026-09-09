@@ -25,6 +25,10 @@
 #' }
 #' @author Pascal Sauer
 calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, harmonization) {
+  if (harmonization == "absoluteChanges") {
+    stop("Unsupported harmonization method \"", harmonization, "\", ",
+         "absoluteChanges is only supported for land harmonization")
+  }
   landHarmonized <- calcOutput("LandHarmonized", input = input, target = target,
                                harmonizationPeriod = harmonizationPeriod,
                                harmonization = harmonization, aggregate = FALSE)
