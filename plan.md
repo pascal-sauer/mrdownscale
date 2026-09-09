@@ -27,9 +27,16 @@ Key difference from existing methods: `harmonizationPeriod` is a **single year**
 after hp[2]" checks) does not apply and must be branched around.
 
 ### Decisions (confirmed with user)
-- **Negative categories**: clamp to 0, then renormalize each region/timestep so the
-  total area is preserved; additionally emit a **warning** when any clamping happens.
-  Also run `toolReplaceExpansion` for `primf`/`primn` as the other harmonizers do.
+- **Negative categories**: if a **forest** category (`pltns`, `primf`, `secdf`) would go
+  negative, do NOT just clamp: deduct the shortfall from **other land** (`primn`, `secdn`)
+  instead, emitting a **warning** with the number and % of affected cells plus min, mean
+  and median of the negative values. Any remaining negative values (forest cells where
+  `primn`/`secdn` were insufficient, and all non-forest negatives) are clamped to 0;
+  afterwards **non-prim** items (everything except `primf`/`primn`) are scaled per
+  region/timestep so the total area stays equal to the target area at the harmonization
+  year. Then run `toolReplaceExpansion` for `primf`/`primn` as the other harmonizers do,
+  **after** these fixes (see Step 1): the corrections can introduce primf/primn expansion,
+  which `toolPrimExpansionCheck` in `calcLandHarmonized` would flag.
 - **Scope**: make it work end-to-end for `calcLandHarmonized` only. Do **not** touch
   `calcNonlandHarmonized` / `calcWoodHarvestAreaHarmonized` (they use `hp[2]`).
 
@@ -42,14 +49,20 @@ after hp[2]" checks) does not apply and must be branched around.
   years/items, `xInput <- xInput[getItems(xTarget, 1), , getItems(xTarget, 3)]`
   alignment, `mbind` of time slices, and `toolReplaceExpansion(out, "primf", "secdf", ...)`
   / `(out, "primn", "secdn", ...)`.
-- `R/calcLandTargetExtrapolatedCore.R` normalization idiom for conserving total area:
-  `x <- x * targetArea / dimSums(x, dim = 3)` (used here after clamping).
+- `calcLandTargetExtrapolatedCore` (defined inside `R/calcLandTargetExtrapolated.R:116`,
+  not its own file) normalization idiom for conserving total area:
+  `x <- x * targetArea / dimSums(x, dim = 3)` plus `x[is.na(x)] <- 0`
+  (lines 136–138; adapted here — scaling applies only to non-prim items, primf/primn
+  are kept untouched by the scaling step).
 - `R/calcLandTargetLowRes.R` — `calcOutput("LandTargetLowRes", input, target,
   endOfHistory = <year>)` returns low-res target land through a given year; use this
   to source historical target for the single-year path (avoids `LandTargetExtrapolated`'s
   `hp[2]` dependency).
 - `toolStatusMessage("warn", ...)` / `toolExpectTrue(..., falseStatus = "warn")` — the
   codebase's warning idioms (see `toolEqualizeArea.R`, `toolPrimExpansionCheck.R`).
+  testthat's `expect_warning` catches these (see `test-toolReplaceExpansion.R:3`).
+- `R/toolReplaceExpansion.R:22` — no-ops when `from` is missing from `getItems(x, 3)`,
+  so extra `%in%` guards around `toolReplaceExpansion` calls are unnecessary.
 - `CONTRIBUTING.md`: define aux functions inside the `calc`/`tool` body or as a `tool*`
   function so they enter madrat's cache key. The new harmonizer is a `tool*` function,
   so this is satisfied.
@@ -72,13 +85,31 @@ Behavior:
    single harmonization-year slice across future years).
 6. `changed <- setYears(xTarget[, y, ], NULL) + delta` → set years to `futureYears`.
 7. `out <- mbind(xTarget[, targetYears <= y, ], changed)`.
-8. `out <- toolReplaceExpansion(out, "primf", "secdf", warnThreshold = 100, level = level)`
-   and same for `primn`/`secdn` (guard with the `%in% getItems` checks as fadeForest does).
-9. Negative handling: if `any(out < 0)`, emit `toolStatusMessage("warn", ...)` (or
-   `toolExpectTrue(min(out) >= 0, ..., falseStatus = "warn")`), clamp `out[out < 0] <- 0`,
-   then renormalize per region/timestep to restore the total:
-   `out <- out * setYears(dimSums(xTarget[, y, ], 3), NULL) / dimSums(out, 3)` guarding
-   against divide-by-zero (`out[is.na(out)] <- 0`), matching the Core normalization idiom.
+ 8. Negative handling, in this order:
+    a. Define `forest <- intersect(c("pltns", "primf", "secdf"), getItems(out, 3))` and
+       `otherLand <- intersect(c("primn", "secdn"), getItems(out, 3))` (categories may be
+       absent depending on input/target recat).
+    b. If any `out[, , forest] < 0`: emit `toolStatusMessage("warn", ...)` reporting the
+       **number and % of affected cells** (region x year x item cells with a negative
+       forest value; % of all cells in the object) and the **min, mean and median** of
+       those negative values. Then fund the shortfall `S = max(0, -value)` from
+       `otherLand` instead of letting forest go negative: deduct
+       `D = pmin(S, dimSums(out[, , otherLand], 3))` from `primn`/`secdn` proportional to
+       their current shares, and add `D` to the forest cell. Where `otherLand` cannot
+       cover `S` fully, the forest cell stays negative and is handled in step d.
+    c. Non-forest negatives are not specially handled; they are clamped in step d.
+    d. Clamp remaining negatives: `out[out < 0] <- 0` (this raises affected totals).
+    e. Restore totals by scaling **non-prim** items only (`setdiff(getItems(out, 3),
+       c("primf", "primn"))`), leaving primf/primn untouched:
+       `factor <- (targetArea - dimSums(out[, , primf/primn], 3)) / dimSums(out[, , nonPrim], 3)`
+       with `targetArea <- setYears(dimSums(xTarget[, y, ], 3), NULL)` broadcast over
+       years; `out[, , nonPrim] <- out[, , nonPrim] * factor`, then `out[is.na(out)] <- 0`.
+       Guards: `dimSums(nonPrim) == 0` -> NA factor -> cells set to 0; factor < 0 (prim
+       area exceeds total) -> warn and use factor 0.
+ 9. `out <- toolReplaceExpansion(out, "primf", "secdf", warnThreshold = 100, level = level)`
+    and same for `primn`/`secdn`. Must run **after** the negative handling (step 8), since
+    funding forest from primn and the non-prim scaling can introduce primf/primn expansion;
+    no `%in%` guards needed (toolReplaceExpansion no-ops on missing items).
 10. Return `out` (magpie), sets/order consistent with inputs.
 
 Test `tests/testthat/test-toolHarmonizeAbsoluteChanges.R` (mirror the fixture style of
@@ -88,9 +119,15 @@ Test `tests/testthat/test-toolHarmonizeAbsoluteChanges.R` (mirror the fixture st
   `out[,2020,] == target[,2020,]`, `out[,2025,] == target[,2020,] + (input[,2025,] - input[,2020,])`.
 - **total conserved**: `dimSums(out,3)` equals target total at 2020 for every year.
 - **pre-year passthrough**: `out[, year < 2020, ] == target[, year < 2020, ]`.
-- **negative clamp + warning**: craft an input where one category's decrease exceeds
-  the target baseline; assert `expect_warning(...)`, `all(out >= 0)`, and total still
-  conserved.
+- **negative forest deducted from other land**: craft an input where a forest category
+  (e.g. `secdf`) drops below the target baseline by an amount fully covered by
+  `primn` + `secdn`; assert `expect_warning(...)` (message contains number/% of affected
+  cells and min/mean/median of the negative values), `out[, , forest] >= 0` afterwards,
+  `dimSums(out[, , c("primn", "secdn")], 3)` reduced by exactly that shortfall, total
+  conserved, and `primf`/`primn` values untouched by the non-prim scaling.
+- **other land insufficient -> clamp + non-prim scaling**: shortfall exceeds available
+  `primn` + `secdn`; assert warning emitted, `all(out >= 0)`, and `dimSums(out, 3)` equal
+  to the target total at 2020 for every year.
 
 ### Step 2 — Register the method in `toolGetHarmonizer`
 
@@ -98,7 +135,7 @@ Edit `R/toolGetHarmonizer.R`: add
 `absoluteChanges = function(...) toolHarmonizeAbsoluteChanges(...)` to the list; update
 the roxygen `@param`/`@seealso` to mention it.
 
-Test: extend/add `tests/testthat/test-toolGetHarmonizer.R` asserting
+Test: new file `tests/testthat/test-toolGetHarmonizer.R` (does not exist yet) asserting
 `is.function(toolGetHarmonizer("absoluteChanges"))` and that an unknown name still errors.
 
 ### Step 3 — Branch `calcLandHarmonized` for the single-year method
@@ -129,10 +166,12 @@ and its internal `toolExpect*` checks rather than a new isolated test.
 
 ### Step 4 — End-to-end verification (definition of done)
 
-In a **fresh** R session:
+In a **fresh** R session (madrat memory profiling does not work in this sandboxed
+environment, so disable it in every session that runs `calcOutput`):
 
 ```r
 pkgload::load_all()
+madrat::setConfig(memoryprofiling = FALSE)
 a <- calcOutput("LandHarmonized", input = "magpie", target = "luh3",
                 harmonizationPeriod = 2020, harmonization = "absoluteChanges",
                 aggregate = FALSE)
@@ -148,7 +187,7 @@ input's changes (up to any clamping), and `dimSums(a,3)` is constant over time.
 - New: `R/toolHarmonizeAbsoluteChanges.R`
 - New: `tests/testthat/test-toolHarmonizeAbsoluteChanges.R`
 - Edit: `R/toolGetHarmonizer.R` (registry + roxygen)
-- New/Edit: `tests/testthat/test-toolGetHarmonizer.R`
+- New: `tests/testthat/test-toolGetHarmonizer.R`
 - Edit: `R/calcLandHarmonized.R` (branch target sourcing + guard post-harmonization checks + roxygen)
 
 ## Verification summary
@@ -157,6 +196,7 @@ input's changes (up to any clamping), and `dimSums(a,3)` is constant over time.
 2. `Rscript -e 'devtools::test_file("tests/testthat/test-toolGetHarmonizer.R")'` — green.
 3. `Rscript -e 'devtools::test()'` — no regressions.
 4. Fresh-session `calcOutput("LandHarmonized", ..., harmonization = "absoluteChanges")` — succeeds.
+   Run with `madrat::setConfig(memoryprofiling = FALSE)` (sandbox limitation).
 
 Do not run `lucode2::buildLibrary()` / bump versions unless the user asks.
 
