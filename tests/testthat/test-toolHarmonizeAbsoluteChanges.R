@@ -194,6 +194,57 @@ test_that("toolHarmonizeAbsoluteChanges returns an unclamped timestep unchanged 
   expect_identical(as.vector(out[, 2040, ]), as.vector(expected2040))
 })
 
+test_that("toolHarmonizeAbsoluteChanges funds negative forest deducted from other land", {
+  categories <- c("primf", "primn", "secdf", "secdn", "crop")
+  xTarget <- new.magpie("GLO", c(2000, 2020), categories, sets = c("region", "year", "data"))
+  xTarget[, 2000, ] <- c(20, 20, 5, 15, 40)
+  xTarget[, 2020, ] <- c(20, 20, 5, 15, 40)
+
+  xInput <- new.magpie("GLO", c(2020, 2030), categories, sets = c("region", "year", "data"))
+  xInput[, 2020, ] <- c(20, 20, 5, 15, 40)
+  # secdf drops by 8 (-> changed secdf = 5 - 8 = -3), fully covered by primn + secdn (35)
+  xInput[, 2030, ] <- c(20, 20, -3, 15, 48)
+
+  expect_warning({
+    out <- toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020)
+  }, "funding 1 negative forest values \\(50% .*min value: -3.*mean: -3.*median: -3")
+
+  expect_true(all(out[, , c("primf", "secdf")] >= 0))
+
+  # shortfall of 3 is deducted from primn + secdn, proportionally to their shares
+  expect_equal(as.vector(dimSums(out[, 2030, c("primn", "secdn")], dim = 3)),
+               as.vector(dimSums(xTarget[, 2020, c("primn", "secdn")], dim = 3)) - 3)
+
+  # total area is conserved
+  expect_equal(as.vector(dimSums(out[, 2030, ], dim = 3)),
+               as.vector(dimSums(xTarget[, 2020, ], dim = 3)))
+
+  # primf is untouched, as no clamping/redistribution was needed on top of the forest rescue
+  expect_equal(as.vector(out[, 2030, "primf"]), 20)
+})
+
+test_that("toolHarmonizeAbsoluteChanges clamps and redistributes when other land is insufficient", {
+  categories <- c("primf", "primn", "secdf", "secdn", "crop")
+  xTarget <- new.magpie("GLO", c(2000, 2020), categories, sets = c("region", "year", "data"))
+  xTarget[, 2000, ] <- c(20, 5, 10, 5, 60)
+  xTarget[, 2020, ] <- c(20, 5, 10, 5, 60)
+
+  xInput <- new.magpie("GLO", c(2020, 2030), categories, sets = c("region", "year", "data"))
+  xInput[, 2020, ] <- c(20, 5, 10, 5, 60)
+  # secdf drops by 25 (-> changed secdf = 10 - 25 = -15), primn + secdn only cover 10 of it
+  xInput[, 2030, ] <- c(20, 5, -15, 5, 85)
+
+  expect_warning({
+    out <- toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020)
+  })
+
+  expect_true(all(out >= 0))
+  targetTotal <- as.vector(dimSums(xTarget[, 2020, ], dim = 3))
+  for (year in getYears(out, as.integer = TRUE)) {
+    expect_equal(as.vector(dimSums(out[, year, ], dim = 3)), targetTotal)
+  }
+})
+
 test_that("toolHarmonizeAbsoluteChanges validates its inputs", {
   f <- makeBaseFixture()
 

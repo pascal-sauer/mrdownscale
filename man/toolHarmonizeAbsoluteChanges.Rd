@@ -21,16 +21,23 @@ change of the input data (relative to harmonizationPeriod) is used}
 toolStatusMessage calls in this function, see \code{\link{toolStatusMessage}}}
 }
 \value{
-magpie object with harmonized data. Negative values are clamped to
-0, a warning is emitted if any clamping happened. The resulting surplus is
-then redistributed: it is taken proportionally from the categories that
-still have a positive value, excluding primf and primn, so the
-absolute-change signal of primf/primn is preserved exactly. If the
-surplus cannot be fully absorbed this way (e.g. because the eligible
-categories do not have enough headroom), the previous behavior of
-renormalizing all categories of the affected cell/timestep proportionally
-is used as a fallback, emitting a note reporting how often this happened.
-Each cell/timestep total area is kept constant throughout.
+magpie object with harmonized data. If a forest category (pltns,
+primf, secdf) would go negative, the shortfall is instead funded from
+other land (primn, secdn), deducted proportionally to their current
+shares and added back to the forest categories proportionally to their
+shortfall; a warning is emitted reporting the number and percentage of
+affected cells and the min, mean and median of the negative values. Any
+remaining negative values (forest cells where primn/secdn were
+insufficient, and all non-forest negatives) are clamped to 0, again with
+a warning if any clamping happened. The resulting surplus is then
+redistributed: it is taken proportionally from the categories that still
+have a positive value, excluding primf and primn, so the absolute-change
+signal of primf/primn is preserved exactly. If the surplus cannot be
+fully absorbed this way (e.g. because the eligible categories do not have
+enough headroom), the previous behavior of renormalizing all categories
+of the affected cell/timestep proportionally is used as a fallback,
+emitting a note reporting how often this happened. Each cell/timestep
+total area is kept constant throughout.
 }
 \description{
 Harmonize datasets by applying the absolute changes of the input data
