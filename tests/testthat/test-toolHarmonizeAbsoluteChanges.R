@@ -80,3 +80,22 @@ test_that("other land insufficient -> clamp plus non-prim scaling", {
   expect_equal(as.vector(out[, 2025, "urc"]), 180)
   expect_equal(as.vector(out[, 2025, c("secdf", "secdn")]), c(0, 0))
 })
+
+test_that("no other land available -> clamp plus scaling, no NaN", {
+  target <- makeMagpie(c(2020), list(
+    primf = c(100), secdf = c(50), pltns = c(0),
+    primn = c(0), secdn = c(0), urc = c(130)))
+  # no primn/secdn exists in this cell, funding is impossible
+  input <- makeMagpie(c(2020, 2025), list(
+    primf = c(100, 100), secdf = c(80, 0), pltns = c(0, 0),
+    primn = c(0, 0), secdn = c(0, 0), urc = c(100, 180)))
+
+  expect_warning({
+    out <- toolHarmonizeAbsoluteChanges(input, target, harmonizationPeriod = 2020)
+  }, "negative forest cells")
+
+  expect_false(anyNA(out))
+  expect_true(all(out >= 0))
+  expect_equal(as.vector(dimSums(out, 3)), rep(280, 2), tolerance = 10^-9)
+  expect_equal(as.vector(out[, 2025, "urc"]), 180)
+})

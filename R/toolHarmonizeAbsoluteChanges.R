@@ -62,6 +62,8 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, l
       shortfall <- -shortfall
       available <- dimSums(future[, , otherLand], dim = 3)
       deduction <- pmin(shortfall, available)
+      # avoid 0/0 = NaN for cells where deduction and available are both 0
+      available[available == 0] <- 1
       future[, , otherLand] <- future[, , otherLand] - deduction * future[, , otherLand] / available
       future[, , f] <- future[, , f] + deduction
     }
