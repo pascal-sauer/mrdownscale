@@ -70,6 +70,64 @@ test_that("toolHarmonizeAbsoluteChanges avoids negative values", {
   expect_equal(as.vector(out["reg.three", 2020, ]), c(5, 5, 10, 5, 5, 70))
 })
 
+test_that("toolHarmonizeAbsoluteChanges deducts negative forest area from other land", {
+  items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
+
+  xTarget <- new.magpie("reg.four", years = c(2010, 2020), names = items, fill = 0)
+  for (year in c(2010, 2020)) {
+    xTarget["reg.four", year, ] <- c(40, 10, 10, 5, 5, 30)
+  }
+
+  xInput <- new.magpie("reg.four", years = c(2020, 2025), names = items, fill = 0)
+  xInput["reg.four", 2020, ] <- c(20, 10, 20, 5, 10, 35)
+  # input loses 15 Mha secdf, target only has 10 Mha secdf in 2020
+  xInput["reg.four", 2025, ] <- c(20, 10, 5, 5, 10, 50)
+
+  expect_warning(
+    {
+      out <- suppressMessages(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020))
+    },
+    "absolute changes made forest categories negative: 1 of 6 cells \\(16.7%\\), min = -5, mean = -5, median = -5"
+  )
+
+  # secdf shortfall of 5 Mha is deducted from primn and secdn proportional to
+  # their shares, secdf itself is set to 0 and primf stays untouched
+  expect_equal(as.vector(out["reg.four", 2025, c("primf", "primn", "secdf", "secdn", "urban", "other")]),
+               c(40, 20 / 3, 0, 10 / 3, 5, 45))
+  # primn + secdn are reduced by exactly the shortfall
+  expect_equal(as.vector(dimSums(out["reg.four", 2025, c("primn", "secdn")], dim = 3)), 10)
+  # no clamping or rescaling was needed, other categories are unchanged
+  expect_true(all(out >= 0))
+  expect_equal(as.vector(dimSums(out, dim = 3)), rep(100, 3))
+  expect_equal(as.vector(out["reg.four", 2020, ]), c(40, 10, 10, 5, 5, 30))
+})
+
+test_that("toolHarmonizeAbsoluteChanges clamps and scales non-prim categories if other land is insufficient", {
+  items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
+
+  xTarget <- new.magpie("reg.five", years = c(2010, 2020), names = items, fill = 0)
+  for (year in c(2010, 2020)) {
+    xTarget["reg.five", year, ] <- c(40, 4, 10, 1, 5, 40)
+  }
+
+  xInput <- new.magpie("reg.five", years = c(2020, 2025), names = items, fill = 0)
+  xInput["reg.five", 2020, ] <- c(20, 4, 20, 1, 5, 50)
+  # input loses 20 Mha secdf, primn + secdn (5 Mha) cannot cover the 10 Mha shortfall
+  xInput["reg.five", 2025, ] <- c(20, 4, 0, 1, 5, 70)
+
+  suppressWarnings(suppressMessages({
+    out <- toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020)
+  }))
+
+  # primn and secdn are fully deducted, the remaining secdf deficit is clamped to 0
+  # and the non-prim categories are scaled down to keep the total area constant
+  expect_equal(as.vector(out["reg.five", 2025, c("primf", "primn", "secdf", "secdn")]), c(40, 0, 0, 0))
+  # primf stays exactly at the target value, it is not affected by the scaling
+  expect_equal(as.vector(out["reg.five", 2025, c("urban", "other")]), c(60 / 13, 720 / 13))
+  expect_true(all(out >= 0))
+  expect_equal(as.vector(dimSums(out, dim = 3)), rep(100, 3))
+})
+
 test_that("toolGetHarmonizer returns the absoluteChanges harmonizer", {
   harmonizer <- toolGetHarmonizer("absoluteChanges")
   expect_true(is.function(harmonizer))
