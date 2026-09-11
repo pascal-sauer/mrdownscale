@@ -7,10 +7,10 @@
 #' @inheritParams toolHarmonizeFade
 #' @inherit toolHarmonizeFade return
 #' @author Pascal Sauer
-toolHarmonizeFadeForest <- function(xInput, xTarget, harmonizationPeriod) {
+toolHarmonizeFadeForest <- function(xInput, xTarget, harmonizationPeriod, level = 2) {
   hp1 <- harmonizationPeriod[1]
 
-  x <- toolHarmonizeFade(xInput, xTarget, harmonizationPeriod, level = 4)
+  x <- toolHarmonizeFade(xInput, xTarget, harmonizationPeriod, level = level + 1)
   years <- getYears(x, as.integer = TRUE)
   psf <- c("primf", "secdf")
   if (!all(psf %in% getItems(x, 3))) {

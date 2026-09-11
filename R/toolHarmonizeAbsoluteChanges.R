@@ -20,11 +20,13 @@
 #' @param harmonizationPeriod Single integer value, the year the absolute
 #' changes of the input data are applied to, must be present in both input and
 #' target data
+#' @param level eventually passed to toolStatusMessage; determines to which
+#' function the madrat message gets attached to
 #' @return harmonized data set as magpie object with data from target for years
 #' up to and including the harmonization year and absolute changes from input
 #' relative to the harmonization year afterwards
 #' @author Pascal Sauer
-toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
+toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, level = 2) {
   hp <- harmonizationPeriod
 
   inputYears <- getYears(xInput, as.integer = TRUE)
@@ -62,7 +64,7 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
                                      ", median = ", median(negativeValues),
                                      ", shortfall was deducted from ",
                                      paste(otherLand, collapse = "/")),
-                      level = 1)
+                      level = level)
     # deduct missing area from other land categories instead of letting forest
     # categories become negative, proportional to their current shares
     for (from in forest) {
@@ -91,7 +93,7 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
     if (any(factor < 0, na.rm = TRUE)) {
       toolStatusMessage("warn", paste0("prim area exceeds total area after correcting negative ",
                                        "values, setting non-prim categories to 0 in affected cells"),
-                        level = 1)
+                        level = level)
     }
     factor[!is.finite(factor) | factor < 0] <- 0
     changed[, , nonPrim] <- changed[, , nonPrim] * factor
@@ -103,8 +105,8 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
   # during harmonization primf and primn expansion might be introduced due to
   # primf or primn differences between input and target dataset
   # replace primf and primn expansion with secdf and secdn
-  out <- toolReplaceExpansion(out, "primf", "secdf", warnThreshold = 100, level = 3)
-  out <- toolReplaceExpansion(out, "primn", "secdn", warnThreshold = 100, level = 3)
+  out <- toolReplaceExpansion(out, "primf", "secdf", warnThreshold = 100, level = level + 1)
+  out <- toolReplaceExpansion(out, "primn", "secdn", warnThreshold = 100, level = level + 1)
 
   return(out)
 }
