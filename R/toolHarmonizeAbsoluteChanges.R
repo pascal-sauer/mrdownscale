@@ -74,17 +74,15 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, l
                       level = level)
     # deduct missing area from other land categories instead of letting forest
     # categories become negative, proportional to their current shares
-    for (from in forest) {
-      shortfall <- -changed[, , from] * (changed[, , from] < 0)
-      if (length(otherLand) > 0) {
-        available <- dimSums(changed[, , otherLand], dim = 3)
-        deducted <- pmin(shortfall, available)
-        changed[, , from] <- changed[, , from] + deducted
-        safeAvailable <- available + (available == 0)
-        for (to in otherLand) {
-          changed[, , to] <- changed[, , to] - deducted * changed[, , to] / safeAvailable
-        }
-      }
+    if (length(otherLand) > 0) {
+      shortfall <- -changed[, , forest] * (changed[, , forest] < 0)
+      available <- dimSums(changed[, , otherLand], dim = 3)
+      totalShortfall <- dimSums(shortfall, dim = 3)
+      deducted <- pmin(totalShortfall, available)
+      changed[, , forest] <- changed[, , forest] +
+        shortfall * deducted / (totalShortfall + (totalShortfall == 0))
+      changed[, , otherLand] <- changed[, , otherLand] -
+        deducted * changed[, , otherLand] / (available + (available == 0))
     }
   }
 
