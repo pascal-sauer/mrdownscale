@@ -4,7 +4,7 @@
 \alias{toolHarmonizeFadeForest}
 \title{toolHarmonizeFadeForest}
 \usage{
-toolHarmonizeFadeForest(xInput, xTarget, harmonizationPeriod)
+toolHarmonizeFadeForest(xInput, xTarget, harmonizationPeriod, level = 2)
 }
 \arguments{
 \item{xInput}{input data as magpie object}
@@ -14,6 +14,9 @@ toolHarmonizeFadeForest(xInput, xTarget, harmonizationPeriod)
 \item{harmonizationPeriod}{Two integer values, before the first given
 year the target dataset is used, after the second given year the input
 dataset is used, in between harmonize between the two datasets}
+
+\item{level}{eventually passed to toolStatusMessage; determines to which
+function the madrat message gets attached to}
 }
 \value{
 harmonized data set as magpie object with data from input for years

@@ -4,7 +4,7 @@
 \alias{toolHarmonizeAbsoluteChanges}
 \title{toolHarmonizeAbsoluteChanges}
 \usage{
-toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod)
+toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod, level = 2)
 }
 \arguments{
 \item{xInput}{input data as magpie object}
@@ -14,6 +14,9 @@ toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod)
 \item{harmonizationPeriod}{Single integer value, the year the absolute
 changes of the input data are applied to, must be present in both input and
 target data}
+
+\item{level}{eventually passed to toolStatusMessage; determines to which
+function the madrat message gets attached to}
 }
 \value{
 harmonized data set as magpie object with data from target for years
@@ -29,8 +32,12 @@ added to the target data of the harmonization year, e.g. if the target data
 has 10 Mha secdf in the harmonization year and the input data secdf grows by
 2 Mha from the harmonization year to 2025, the harmonized data set has 12
 Mha secdf in 2025.
-If this makes values negative, they are set to 0 and the other categories
-are reduced proportionally, so that the total area stays constant.
+If this makes forest categories (pltns, primf, secdf) negative, the missing
+area is deducted from the other land categories (primn, secdn) instead.
+Negative values which remain afterwards (because other land was not
+available in sufficient amount or non-forest categories became negative) are
+set to 0 and the non-prim categories are then scaled, so that the total area
+stays constant.
 }
 \author{
 Pascal Sauer

@@ -27,26 +27,33 @@
 #' relative to the harmonization year afterwards
 #' @author Pascal Sauer
 toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, level = 2) {
-  hp <- harmonizationPeriod
+  hy <- harmonizationPeriod
 
   inputYears <- getYears(xInput, as.integer = TRUE)
   targetYears <- getYears(xTarget, as.integer = TRUE)
 
-  stopifnot(length(hp) == 1,
-            round(hp) == hp,
+  stopifnot(length(hy) == 1,
+            round(hy) == hy,
+            !anyNA(xInput),
+            !anyNA(xTarget),
             setequal(getItems(xInput, dim = 1), getItems(xTarget, dim = 1)),
             setequal(getItems(xInput, dim = 3), getItems(xTarget, dim = 3)))
-  if (!hp %in% targetYears) {
-    stop("harmonizationPeriod ", hp, " is not a year in the target data")
+  if (!hy %in% targetYears) {
+    stop("harmonizationPeriod ", hy, " is not a year in the target data")
   }
-  if (!hp %in% inputYears) {
-    stop("harmonizationPeriod ", hp, " is not a year in the input data")
+  if (!hy %in% inputYears) {
+    stop("harmonizationPeriod ", hy, " is not a year in the input data")
   }
   xInput <- xInput[getItems(xTarget, 1), , getItems(xTarget, 3)]
 
+  # total area of each cell, which must be constant over time and equal in input and target
+  targetArea <- dimSums(setYears(xTarget[, hy, ], NULL), dim = 3)
+  stopifnot(all(abs(dimSums(xTarget, dim = 3) - targetArea) < 10^-5))
+
   # apply absolute changes of input data to target data of the harmonization year
-  changed <- setYears(xTarget[, hp, ], NULL) +
-    (xInput[, inputYears > hp, ] - setYears(xInput[, hp, ], NULL))
+  changed <- setYears(xTarget[, hy, ], NULL) +
+    (xInput[, inputYears > hy, ] - setYears(xInput[, hy, ], NULL))
+  stopifnot(all(abs(dimSums(changed, dim = 3) - targetArea) < 10^-5))
 
   # absolute changes can become negative if the input data loses more area of a
   # category than the target data has in the harmonization year
@@ -85,7 +92,6 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, l
   # so that the total area remains unchanged (primf and primn are left untouched)
   if (any(changed < 0)) {
     changed[changed < 0] <- 0
-    targetArea <- dimSums(setYears(xTarget[, hp, ], NULL), dim = 3)
     prim <- intersect(c("primf", "primn"), getItems(changed, dim = 3))
     nonPrim <- setdiff(getItems(changed, dim = 3), c("primf", "primn"))
     primSum <- if (length(prim) > 0) dimSums(changed[, , prim], dim = 3) else 0
@@ -97,10 +103,9 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, l
     }
     factor[!is.finite(factor) | factor < 0] <- 0
     changed[, , nonPrim] <- changed[, , nonPrim] * factor
-    changed[is.na(changed)] <- 0
   }
 
-  out <- mbind(xTarget[, targetYears <= hp, ], changed)
+  out <- mbind(xTarget[, targetYears <= hy, ], changed)
 
   # during harmonization primf and primn expansion might be introduced due to
   # primf or primn differences between input and target dataset

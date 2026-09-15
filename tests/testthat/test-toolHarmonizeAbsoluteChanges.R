@@ -128,6 +128,34 @@ test_that("toolHarmonizeAbsoluteChanges clamps and scales non-prim categories if
   expect_equal(as.vector(dimSums(out, dim = 3)), rep(100, 3))
 })
 
+test_that("toolHarmonizeAbsoluteChanges rejects inconsistent or invalid input data", {
+  items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
+
+  xTarget <- new.magpie("reg.six", years = c(2010, 2020), names = items, fill = 0)
+  for (year in c(2010, 2020)) {
+    xTarget["reg.six", year, ] <- c(40, 10, 10, 5, 5, 30)
+  }
+
+  xInput <- new.magpie("reg.six", years = c(2020, 2025), names = items, fill = 0)
+  xInput["reg.six", 2020, ] <- c(20, 10, 20, 5, 10, 35)
+  xInput["reg.six", 2025, ] <- c(20, 10, 22, 5, 10, 33)
+
+  # total area of input is not constant over time
+  brokenInput <- xInput
+  brokenInput["reg.six", 2025, "other"] <- 30
+  expect_error(toolHarmonizeAbsoluteChanges(brokenInput, xTarget, 2020))
+
+  # total area of target is not constant over time
+  brokenTarget <- xTarget
+  brokenTarget["reg.six", 2010, "other"] <- 25
+  expect_error(toolHarmonizeAbsoluteChanges(xInput, brokenTarget, 2020))
+
+  # input data contains NA values
+  naInput <- xInput
+  naInput["reg.six", 2025, "urban"] <- NA_real_
+  expect_error(toolHarmonizeAbsoluteChanges(naInput, xTarget, 2020))
+})
+
 test_that("toolGetHarmonizer returns the absoluteChanges harmonizer", {
   harmonizer <- toolGetHarmonizer("absoluteChanges")
   expect_true(is.function(harmonizer))
