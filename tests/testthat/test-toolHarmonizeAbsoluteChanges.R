@@ -102,7 +102,7 @@ test_that("toolHarmonizeAbsoluteChanges deducts negative forest area from other 
   expect_equal(as.vector(out["reg.four", 2020, ]), c(40, 10, 10, 5, 5, 30))
 })
 
-test_that("toolHarmonizeAbsoluteChanges clamps and scales non-prim categories if other land is insufficient", {
+test_that("toolHarmonizeAbsoluteChanges scales remaining categories while protecting prim and urban", {
   items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
 
   xTarget <- new.magpie("reg.five", years = c(2010, 2020), names = items, fill = 0)
@@ -120,12 +120,65 @@ test_that("toolHarmonizeAbsoluteChanges clamps and scales non-prim categories if
   }))
 
   # primn and secdn are fully deducted, the remaining secdf deficit is clamped to 0
-  # and the non-prim categories are scaled down to keep the total area constant
+  # and only the remaining categories are scaled down to keep the total area constant
   expect_equal(as.vector(out["reg.five", 2025, c("primf", "primn", "secdf", "secdn")]), c(40, 0, 0, 0))
-  # primf stays exactly at the target value, it is not affected by the scaling
-  expect_equal(as.vector(out["reg.five", 2025, c("urban", "other")]), c(60 / 13, 720 / 13))
+  expect_equal(as.vector(out["reg.five", 2025, c("urban", "other")]), c(5, 55))
   expect_true(all(out >= 0))
   expect_equal(as.vector(dimSums(out, dim = 3)), rep(100, 3))
+})
+
+test_that("toolHarmonizeAbsoluteChanges scales prim if prim and urban exceed the total area", {
+  items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
+
+  xTarget <- new.magpie("reg.seven", years = c(2010, 2020), names = items, fill = 0)
+  for (year in c(2010, 2020)) {
+    xTarget["reg.seven", year, ] <- c(40, 4, 10, 1, 5, 40)
+  }
+
+  xInput <- new.magpie("reg.seven", years = c(2020, 2025), names = items, fill = 0)
+  xInput["reg.seven", 2020, ] <- c(20, 4, 20, 1, 5, 50)
+  # prim gains of 76 Mha make prim overshoot the total area once negative
+  # categories are clipped to 0
+  xInput["reg.seven", 2025, ] <- c(90, 10, 0, 0, 0, 0)
+
+  # each expect_warning captures the first warning matching its pattern, so run
+  # the harmonizer once per expected warning
+  expect_warning(
+    out <- suppressMessages(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020)),
+    "absolute changes made forest categories negative"
+  )
+  expect_warning(
+    suppressMessages(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020)),
+    "prim \\+ urban area exceed total area"
+  )
+
+  # prim is scaled down from 110 to 100, toolReplaceExpansion afterwards moves the
+  # primf expansion of 60 Mha into secdf
+  expect_equal(as.vector(out["reg.seven", 2025, ]), c(40, 0, 60, 0, 0, 0))
+  expect_true(all(out >= 0))
+  expect_equal(as.vector(dimSums(out, dim = 3)), rep(100, 3))
+})
+
+test_that("toolHarmonizeAbsoluteChanges refuses to scale urban", {
+  items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
+
+  xTarget <- new.magpie("reg.eight", years = c(2010, 2020), names = items, fill = 0)
+  for (year in c(2010, 2020)) {
+    xTarget["reg.eight", year, ] <- c(0, 0, 10, 5, 80, 5)
+  }
+
+  xInput <- new.magpie("reg.eight", years = c(2020, 2025), names = items, fill = 0)
+  xInput["reg.eight", 2020, ] <- c(0, 0, 10, 5, 10, 75)
+  # urban gain of 90 Mha makes urban alone overshoot the total area once other
+  # land is clipped to 0, which cannot be fixed without scaling urban
+  xInput["reg.eight", 2025, ] <- c(0, 0, 0, 0, 100, 0)
+
+  expect_error(
+    suppressWarnings(suppressMessages(
+      toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020)
+    )),
+    "urban would need to be scaled but that is not allowed"
+  )
 })
 
 test_that("toolHarmonizeAbsoluteChanges rejects inconsistent or invalid input data", {

@@ -36,8 +36,11 @@ If this makes forest categories (pltns, primf, secdf) negative, the missing
 area is deducted from the other land categories (primn, secdn) instead.
 Negative values which remain afterwards (because other land was not
 available in sufficient amount or non-forest categories became negative) are
-set to 0 and the non-prim categories are then scaled, so that the total area
-stays constant.
+set to 0 and the remaining categories are then scaled down, so that the total
+area stays constant. In this process the other categories (everything except
+primf, primn and urban) are scaled first and primf and primn only if prim and
+urban together still exceed the total area. Urban is never scaled; if urban
+alone exceeds the total area, an error is raised.
 }
 \author{
 Pascal Sauer

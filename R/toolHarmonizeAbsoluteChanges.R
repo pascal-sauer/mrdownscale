@@ -12,8 +12,11 @@
 #' area is deducted from the other land categories (primn, secdn) instead.
 #' Negative values which remain afterwards (because other land was not
 #' available in sufficient amount or non-forest categories became negative) are
-#' set to 0 and the non-prim categories are then scaled, so that the total area
-#' stays constant.
+#' set to 0 and the remaining categories are then scaled down, so that the total
+#' area stays constant. In this process the other categories (everything except
+#' primf, primn and urban) are scaled first and primf and primn only if prim and
+#' urban together still exceed the total area. Urban is never scaled; if urban
+#' alone exceeds the total area, an error is raised.
 #'
 #' @param xInput input data as magpie object
 #' @param xTarget target data as magpie object
@@ -86,21 +89,40 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, l
     }
   }
 
-  # set remaining negative values to 0 and scale non-prim categories afterwards
-  # so that the total area remains unchanged (primf and primn are left untouched)
   if (any(changed < 0)) {
     changed[changed < 0] <- 0
     prim <- intersect(c("primf", "primn"), getItems(changed, dim = 3))
-    nonPrim <- setdiff(getItems(changed, dim = 3), c("primf", "primn"))
-    primSum <- if (length(prim) > 0) dimSums(changed[, , prim], dim = 3) else 0
-    factor <- (targetArea - primSum) / dimSums(changed[, , nonPrim], dim = 3)
-    if (any(factor < 0, na.rm = TRUE)) {
-      toolStatusMessage("warn", paste0("prim area exceeds total area after correcting negative ",
-                                       "values, setting non-prim categories to 0 in affected cells"),
+    urban <- intersect("urban", getItems(changed, dim = 3))
+    other <- setdiff(getItems(changed, dim = 3), c(prim, urban))
+    sumOf <- function(items) {
+      if (length(items) > 0) {
+        dimSums(changed[, , items], dim = 3)
+      } else {
+        0
+      }
+    }
+    primSum <- sumOf(prim)
+    urbanSum <- sumOf(urban)
+    otherSum <- sumOf(other)
+    factor <- (targetArea - primSum - urbanSum) / (otherSum + (otherSum == 0))
+    factor[!is.finite(factor) | factor < 0] <- 0
+    if (length(other) > 0) {
+      changed[, , other] <- changed[, , other] * pmin(factor, 1)
+    }
+    if (any(primSum + urbanSum > targetArea + 10^-5)) {
+      toolStatusMessage("warn", paste0("prim + urban area exceed total area after correcting ",
+                                       "negative values, scaling prim categories down"),
                         level = level)
     }
+    factor <- (targetArea - urbanSum) / (primSum + (primSum == 0))
     factor[!is.finite(factor) | factor < 0] <- 0
-    changed[, , nonPrim] <- changed[, , nonPrim] * factor
+    if (length(prim) > 0) {
+      changed[, , prim] <- changed[, , prim] * pmin(factor, 1)
+    }
+    if (length(urban) > 0 && any(urbanSum > targetArea + 10^-5)) {
+      stop("urban area exceeds total area after correcting negative values, ",
+           "urban would need to be scaled but that is not allowed")
+    }
   }
 
   out <- mbind(xTarget[, targetYears <= hy, ], changed)
@@ -110,6 +132,8 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, l
   # replace primf and primn expansion with secdf and secdn
   out <- toolReplaceExpansion(out, "primf", "secdf", warnThreshold = 100, level = level + 1)
   out <- toolReplaceExpansion(out, "primn", "secdn", warnThreshold = 100, level = level + 1)
+
+  stopifnot(all(abs(dimSums(out, dim = 3) - targetArea) < 10^-5))
 
   return(out)
 }
