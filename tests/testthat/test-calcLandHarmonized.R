@@ -1,10 +1,8 @@
 test_that("calcLandHarmonized works with harmonization = absoluteChanges", {
   harmonizationYear <- 2020
 
-  # with this data absolute changes make forest categories negative, which is
-  # warned about (see test-toolHarmonizeAbsoluteChanges.R for the detailed
-  # warning checks), so the calculation must actually run and not be loaded
-  # from cache
+  # with this data absolute changes make forest categories negative (warned
+  # about), so the calculation must actually run and not be loaded from cache
   oldIgnoreCache <- madrat::setConfig(ignorecache = "calcLandHarmonized")
   withr::defer(madrat::setConfig(ignorecache = oldIgnoreCache$ignorecache))
   expect_warning(
@@ -37,10 +35,9 @@ test_that("calcLandHarmonized works with harmonization = absoluteChanges", {
   targetArea <- dimSums(setYears(xTarget[, harmonizationYear, ], NULL), dim = 3)
   expect_true(max(abs(dimSums(x, dim = 3) - targetArea)) < 10^-5)
 
-  # after the harmonization year absolute changes from the input data were applied,
-  # except for cells where the raw absolute changes would be negative (these are
-  # corrected) and except for primf/primn/secdf/secdn (prim expansion is replaced
-  # with secd expansion)
+  # after the harmonization year absolute changes were applied, except in cells
+  # where corrections were needed and for primf/primn/secdf/secdn (prim
+  # expansion is replaced with secd expansion)
   xInput <- toolEqualizeArea(xInput, xTarget[, harmonizationYear, ])
   yearsAfter <- inputYears[inputYears > harmonizationYear]
   raw <- setYears(xTarget[, harmonizationYear, ], NULL) +

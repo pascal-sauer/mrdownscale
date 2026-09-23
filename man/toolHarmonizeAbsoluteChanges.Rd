@@ -22,22 +22,16 @@ relative to the harmonization year afterwards
 }
 \description{
 Tool function for creating a harmonized data set by applying the absolute
-changes of the input data to the target data. Before and in the
-harmonization year the target data is used. Afterwards, for every year the
-difference of the input data to the input data in the harmonization year is
-added to the target data of the harmonization year, e.g. if the target data
-has 10 Mha secdf in the harmonization year and the input data secdf grows by
-2 Mha from the harmonization year to 2025, the harmonized data set has 12
-Mha secdf in 2025.
+changes of the input data to the target data: up to the harmonization year
+the target data is used, afterwards the difference of the input data to the
+input data of the harmonization year is added to the target data of the
+harmonization year.
 If this makes forest categories (pltns, primf, secdf) negative, the missing
-area is deducted from the other land categories (primn, secdn) instead.
-Negative values which remain afterwards (because other land was not
-available in sufficient amount or non-forest categories became negative) are
-set to 0 and the remaining categories are then scaled down, so that the total
-area stays constant. In this process the other categories (everything except
-primf, primn and urban) are scaled first and primf and primn only if prim and
-urban together still exceed the total area. Urban is never scaled; if urban
-alone exceeds the total area, an error is raised.
+area is deducted proportionally from the other land categories (primn,
+secdn). Remaining negative values are set to 0 and categories are scaled
+down to keep the total area constant: first everything except
+prim (primf, primn) and urban, then prim only if prim + urban exceed
+total area. Urban is never scaled.
 }
 \author{
 Pascal Sauer

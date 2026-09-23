@@ -1,6 +1,6 @@
-test_that("toolHarmonizeAbsoluteChanges works", {
-  items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
+items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
 
+test_that("toolHarmonizeAbsoluteChanges works", {
   xTarget <- new.magpie(c("reg.one", "reg.two"), years = c(2010, 2020), names = items, fill = 0)
   for (year in c(2010, 2020)) {
     xTarget["reg.one", year, ] <- c(40, 10, 10, 5, 5, 30)
@@ -26,9 +26,8 @@ test_that("toolHarmonizeAbsoluteChanges works", {
   expect_equal(as.vector(out["reg.two", 2010, ]), c(30, 10, 20, 5, 5, 30))
   expect_equal(as.vector(out["reg.one", 2020, ]), c(40, 10, 10, 5, 5, 30))
 
-  # after the harmonization year absolute changes from input are applied to the
-  # target value in the harmonization year (secdf grows by 2 Mha from 2020 to 2025
-  # in the input data, target secdf in 2020 is 10 Mha -> 12 Mha in 2025)
+  # after the harmonization year absolute changes from input are applied:
+  # secdf grows by 2 Mha from 2020 to 2025 -> target secdf 10 Mha + 2 = 12 Mha
   expect_equal(as.vector(out["reg.one", 2025, ]), c(40, 10, 12, 5, 5, 28))
   expect_equal(as.vector(out["reg.one", 2030, ]), c(39, 10, 14, 5, 5, 27))
 
@@ -46,8 +45,6 @@ test_that("toolHarmonizeAbsoluteChanges works", {
 })
 
 test_that("toolHarmonizeAbsoluteChanges avoids negative values", {
-  items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
-
   xTarget <- new.magpie("reg.three", years = c(2010, 2020), names = items, fill = 0)
   for (year in c(2010, 2020)) {
     xTarget["reg.three", year, ] <- c(5, 5, 10, 5, 5, 70)
@@ -71,8 +68,6 @@ test_that("toolHarmonizeAbsoluteChanges avoids negative values", {
 })
 
 test_that("toolHarmonizeAbsoluteChanges deducts negative forest area from other land", {
-  items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
-
   xTarget <- new.magpie("reg.four", years = c(2010, 2020), names = items, fill = 0)
   for (year in c(2010, 2020)) {
     xTarget["reg.four", year, ] <- c(40, 10, 10, 5, 5, 30)
@@ -103,8 +98,6 @@ test_that("toolHarmonizeAbsoluteChanges deducts negative forest area from other 
 })
 
 test_that("toolHarmonizeAbsoluteChanges scales remaining categories while protecting prim and urban", {
-  items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
-
   xTarget <- new.magpie("reg.five", years = c(2010, 2020), names = items, fill = 0)
   for (year in c(2010, 2020)) {
     xTarget["reg.five", year, ] <- c(40, 4, 10, 1, 5, 40)
@@ -128,8 +121,6 @@ test_that("toolHarmonizeAbsoluteChanges scales remaining categories while protec
 })
 
 test_that("toolHarmonizeAbsoluteChanges scales prim if prim and urban exceed the total area", {
-  items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
-
   xTarget <- new.magpie("reg.seven", years = c(2010, 2020), names = items, fill = 0)
   for (year in c(2010, 2020)) {
     xTarget["reg.seven", year, ] <- c(40, 4, 10, 1, 5, 40)
@@ -160,8 +151,6 @@ test_that("toolHarmonizeAbsoluteChanges scales prim if prim and urban exceed the
 })
 
 test_that("toolHarmonizeAbsoluteChanges refuses to scale urban", {
-  items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
-
   xTarget <- new.magpie("reg.eight", years = c(2010, 2020), names = items, fill = 0)
   for (year in c(2010, 2020)) {
     xTarget["reg.eight", year, ] <- c(0, 0, 10, 5, 80, 5)
@@ -182,8 +171,6 @@ test_that("toolHarmonizeAbsoluteChanges refuses to scale urban", {
 })
 
 test_that("toolHarmonizeAbsoluteChanges rejects inconsistent or invalid input data", {
-  items <- c("primf", "primn", "secdf", "secdn", "urban", "other")
-
   xTarget <- new.magpie("reg.six", years = c(2010, 2020), names = items, fill = 0)
   for (year in c(2010, 2020)) {
     xTarget["reg.six", year, ] <- c(40, 10, 10, 5, 5, 30)
