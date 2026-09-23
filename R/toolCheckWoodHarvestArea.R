@@ -33,8 +33,7 @@ toolCheckWoodHarvestArea <- function(harvest, land, endOfHistory) {
     msg <- paste0(" (max yearly excess harvest: ", signif(max(x), 3), " Mha)")
     toolExpectTrue(max(x) <= 10^-10,
                    paste0(notePrefix, "wood harvest area is smaller than land ",
-                          "of the corresponding type", if (max(x) > 10^-10) msg),
-                   level = 2)
+                          "of the corresponding type", if (max(x) > 10^-10) msg))
   }
   harvestYears <- getYears(excessHarvestPerYear, as.integer = TRUE)
   checkArea(excessHarvestPerYear[, harvestYears[harvestYears <= endOfHistory], ],
@@ -56,8 +55,7 @@ toolCheckWoodHarvestArea <- function(harvest, land, endOfHistory) {
     toolExpectTrue(max(x) <= 10^-10,
                    paste0(notePrefix, "primf and primn are shrinking by at least ",
                           "their respective wood harvest area",
-                          if (max(x) > 10^-10) msg),
-                   level = 2)
+                          if (max(x) > 10^-10) msg))
   }
   primYears <- getYears(primExcess, as.integer = TRUE)
   checkPrim(primExcess[, primYears[primYears <= endOfHistory], ],

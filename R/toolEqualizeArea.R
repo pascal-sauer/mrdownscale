@@ -1,4 +1,4 @@
-toolEqualizeArea <- function(x, y, level = 1) {
+toolEqualizeArea <- function(x, y) {
   stopifnot(nyears(y) == 1)
   xSum <- dimSums(x[, 1, ], dim = 3)
   ySum <- dimSums(y, dim = 3)
@@ -8,8 +8,7 @@ toolEqualizeArea <- function(x, y, level = 1) {
     stopifnot(is.finite(corr), corr >= 0)
     toolStatusMessage("note", paste0("correction factors were applied to equalize area ",
                                      "(max ratio = ", round(max(corr), 2),
-                                     ", min ratio = ", round(min(corr), 2),  ")"),
-                      level = level)
+                                     ", min ratio = ", round(min(corr), 2),  ")"))
     x <- x * corr
     xSum <- dimSums(x[, 1, ], dim = 3)
   }

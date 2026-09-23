@@ -15,6 +15,6 @@ toolPrimExpansionCheck <- function(x) {
     toolExpectTrue(maxExpansion <= 0,
                    paste0(v, " is never expanding",
                           if (maxExpansion > 0) paste0(", max expansion: ", signif(maxExpansion, 3))),
-                   falseStatus = "warn", level = 1)
+                   falseStatus = "warn")
   }
 }

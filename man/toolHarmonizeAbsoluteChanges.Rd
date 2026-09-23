@@ -4,7 +4,7 @@
 \alias{toolHarmonizeAbsoluteChanges}
 \title{toolHarmonizeAbsoluteChanges}
 \usage{
-toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod, level = 2)
+toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod)
 }
 \arguments{
 \item{xInput}{input data as magpie object}
@@ -14,9 +14,6 @@ toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod, level = 2)
 \item{harmonizationPeriod}{Single integer value, the year the absolute
 changes of the input data are applied to, must be present in both input and
 target data}
-
-\item{level}{eventually passed to toolStatusMessage; determines to which
-function the madrat message gets attached to}
 }
 \value{
 harmonized data set as magpie object with data from target for years

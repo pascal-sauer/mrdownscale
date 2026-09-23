@@ -25,13 +25,13 @@ toolScaleConstantArea <- function(x, ..., noteThreshold = 10^-10, warnThreshold 
 
   if (maxDiff > warnThreshold) {
     toolStatusMessage("warn", paste0("Total area not constant over time (max diff: ",
-                                     signif(maxDiff, 2), ")"), level = 1)
+                                     signif(maxDiff, 2), ")"))
   }
 
   if (maxDiff > noteThreshold) {
     toolStatusMessage("note", paste0("area was scaled to make it constant over time ",
                                      "(min factor: 1-", signif(1 - min(scalingFactor), 3),
-                                     ", max factor: 1+", signif(max(scalingFactor) - 1, 3), ")"), level = 1)
+                                     ", max factor: 1+", signif(max(scalingFactor) - 1, 3), ")"))
   }
 
   return(scaledX)

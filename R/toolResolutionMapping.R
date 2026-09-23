@@ -44,10 +44,9 @@ toolResolutionMapping <- function(mapping, targetGrid) {
     missingShare <- nrow(missingInTarget) / nrow(xyMapping)
     toolStatusMessage(if (missingShare < 0.05) "note" else "warn",
                       paste0(round(missingShare * 100, 2),
-                             "% of input cells missing in target, these are discarded"),
-                      level = 1)
+                             "% of input cells missing in target, these are discarded"))
   } else {
-    toolStatusMessage("ok", "target includes all input cells", level = 1)
+    toolStatusMessage("ok", "target includes all input cells")
   }
 
   mapAllTarget <- merge(xyMapping, xyTarget, by = c("x", "y"), all.y = TRUE)
@@ -57,8 +56,7 @@ toolResolutionMapping <- function(mapping, targetGrid) {
     toolStatusMessage(if (missingShare < 0.01) "note" else "warn",
                       paste0(round(missingShare * 100, 2),
                              "% of target cells missing in mapping, ",
-                             "adding those to mapping (nearest neighbor)"),
-                      level = 1)
+                             "adding those to mapping (nearest neighbor)"))
 
     # method = "cosine" is about 12 times as fast compared to method = "geo" (which is more precise)
     near <- terra::nearest(terra::vect(missingInMapping, geom = c("x", "y"), crs = terra::crs(targetGrid)),
@@ -67,8 +65,7 @@ toolResolutionMapping <- function(mapping, targetGrid) {
                                      "max = ", round(max(near$distance) / 1000, 1), "km",
                                      ", 90% quantile = ",
                                      round(stats::quantile(near$distance, probs = 0.90) / 1000, 1), "km",
-                                     ", mean = ", round(mean(near$distance) / 1000, 1), "km"),
-                      level = 1)
+                                     ", mean = ", round(mean(near$distance) / 1000, 1), "km"))
 
     near <- as.data.frame(near)
     colnames(near)[colnames(near) == "to_id"] <- "cellId"
@@ -79,7 +76,7 @@ toolResolutionMapping <- function(mapping, targetGrid) {
     mappingAddition <- mappingAddition[, mappingColumns]
     stopifnot(nrow(mappingAddition) == nrow(missingInMapping))
   } else {
-    toolStatusMessage("ok", "input includes all target cells", level = 1)
+    toolStatusMessage("ok", "input includes all target cells")
     mappingAddition <- mapping[integer(0), ]
   }
 

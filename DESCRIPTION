@@ -1,8 +1,8 @@
 Type: Package
 Package: mrdownscale
 Title: Downscale and harmonize land use data
-Version: 0.51.1
-Date: 2026-05-22
+Version: 0.51.2
+Date: 2026-09-22
 Authors@R: c(
     person("Pascal", "Sauer", , "pascal.sauer@pik-potsdam.de", role = c("aut", "cre"),
            comment = c(affiliation = "Potsdam Institute for Climate Impact Research", ORCID = "0000-0002-6856-8239")),
@@ -18,7 +18,7 @@ BugReports: https://github.com/pik-piam/mrdownscale/issues
 Depends:
     madrat (>= 3.27.0),
     magclass (>= 7.0.0),
-    mstools (>= 0.8.0),
+    mstools (>= 0.17.0),
     R (>= 4.0.0)
 Imports:
     gdx2,

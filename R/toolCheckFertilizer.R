@@ -5,6 +5,5 @@ toolCheckFertilizer <- function(fertilizer, landMha = NULL, threshold = 1200) {
   }
   toolExpectTrue(max(fertilizer) <= threshold,
                  paste0("Fertilizer application is <= ", threshold, " kg ha-1 yr-1 (max: ",
-                        signif(max(fertilizer), 3), ")"),
-                 level = 1)
+                        signif(max(fertilizer), 3), ")"))
 }
