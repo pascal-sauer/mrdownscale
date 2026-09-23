@@ -6,7 +6,7 @@ transition from historic target data to simulated input data.
 ## Usage
 
 ``` r
-toolHarmonizeFade(xInput, xTarget, harmonizationPeriod, level = 3)
+toolHarmonizeFade(xInput, xTarget, harmonizationPeriod)
 ```
 
 ## Arguments
@@ -24,10 +24,6 @@ toolHarmonizeFade(xInput, xTarget, harmonizationPeriod, level = 3)
   Two integer values, before the first given year the target dataset is
   used, after the second given year the input dataset is used, in
   between harmonize between the two datasets
-
-- level:
-
-  passed to toolReplaceExpansion
 
 ## Value
 

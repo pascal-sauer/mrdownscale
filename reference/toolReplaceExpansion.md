@@ -12,8 +12,7 @@ toolReplaceExpansion(
   to,
   ...,
   noteThreshold = 10^-10,
-  warnThreshold = 10^-5,
-  level = 1
+  warnThreshold = 10^-5
 )
 ```
 
@@ -47,10 +46,6 @@ toolReplaceExpansion(
 
   expansion greater than this will trigger a warning that expanding
   considerably
-
-- level:
-
-  passed to toolStatusMessage
 
 ## Value
 
