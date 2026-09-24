@@ -66,6 +66,8 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
     # categories become negative, proportional to their current shares
     shortfall <- -changed[, , forest] * (changed[, , forest] < 0)
     avail <- dimSums(changed[, , otherLand], 3)
+    # negative values in other land categories cannot fund any shortfall
+    avail[avail < 0] <- 0
     totalShortfall <- dimSums(shortfall, 3)
     deducted <- pmin(totalShortfall, avail)
     changed[, , forest] <- changed[, , forest] + shortfall * deducted / (totalShortfall + (totalShortfall == 0))
@@ -85,7 +87,7 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
     .reduceToFit <- function(items, protected) {
       itemSum <- dimSums(changed[, , items], 3)
       protectedSum <- dimSums(changed[, , protected], 3)
-      factor <- (targetArea - protectedSum) / itemSum
+      factor <- (targetArea - protectedSum) / (itemSum + (itemSum == 0))
       factor[factor < 0] <- 0
       factor[factor > 1] <- 1
       return(changed[, , items] * factor)
@@ -93,9 +95,8 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
 
     changed[, , rest] <- .reduceToFit(rest, c(prim, "urban"))
     if (any(dimSums(changed[, , c(prim, "urban")], 3) > targetArea + 10^-5)) {
-      toolStatusMessage("note", paste0("prim + urban exceed total area after correcting ",
-                                       "negative values, reducing prim categories"),
-                        level = level)
+      toolStatusMessage("warn", paste0("prim + urban exceed total area after correcting ",
+                                       "negative values, reducing prim categories"))
       changed[, , prim] <- .reduceToFit(prim, "urban")
       if (any(dimSums(changed[, , "urban"], 3) > targetArea + 10^-5)) {
         stop("urban area exceeds total area after correcting negative values, ",

@@ -40,7 +40,7 @@ test_that("toolHarmonizeAbsoluteChanges works", {
 
   # invalid harmonizationPeriod
   expect_error(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2015),
-               "2015")
+               "hy %in% inputYears is not TRUE")
   expect_error(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2010, 2020)))
 })
 
@@ -78,10 +78,8 @@ test_that("toolHarmonizeAbsoluteChanges deducts negative forest area from other 
   # input loses 15 Mha secdf, target only has 10 Mha secdf in 2020
   xInput["reg.four", 2025, ] <- c(20, 10, 5, 5, 10, 50)
 
-  expect_warning(
-    {
-      out <- suppressMessages(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020))
-    },
+  out <- expect_message(
+    toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020),
     "absolute changes made forest categories negative: 1 of 6 cells \\(16.7%\\), min = -5, mean = -5, median = -5"
   )
 
@@ -132,15 +130,17 @@ test_that("toolHarmonizeAbsoluteChanges scales prim if prim and urban exceed the
   # categories are clipped to 0
   xInput["reg.seven", 2025, ] <- c(90, 10, 0, 0, 0, 0)
 
-  # each expect_warning captures the first warning matching its pattern, so run
-  # the harmonizer once per expected warning
-  expect_warning(
-    out <- suppressMessages(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020)),
+  # the forest notification is a message and the prim notification a warning, so
+  # run the harmonizer once per expected condition
+  out <- expect_message(
+    suppressWarnings(
+      toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020)
+    ),
     "absolute changes made forest categories negative"
   )
   expect_warning(
     suppressMessages(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020)),
-    "prim \\+ urban area exceed total area"
+    "prim \\+ urban exceed total area"
   )
 
   # prim is scaled down from 110 to 100, toolReplaceExpansion afterwards moves the
