@@ -55,7 +55,7 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
     negatives <- as.vector(changed[, , forest])
     negatives <- negatives[negatives < 0]
     toolStatusMessage("note", paste0("absolute changes made forest categories negative: ",
-                                     length(negatives), " of ", length(changed), " cells (",
+                                     length(negatives), " of ", length(changed), " cluster-year-combinations (",
                                      round(100 * length(negatives) / length(changed), 1),
                                      "%), min = ", min(negatives),
                                      ", mean = ", mean(negatives),
@@ -64,14 +64,23 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
                                      paste(otherLand, collapse = "/")))
     # deduct missing area from other land categories instead of letting forest
     # categories become negative, proportional to their current shares
-    shortfall <- -changed[, , forest] * (changed[, , forest] < 0)
-    avail <- dimSums(changed[, , otherLand], 3)
-    # negative values in other land categories cannot fund any shortfall
-    avail[avail < 0] <- 0
-    totalShortfall <- dimSums(shortfall, 3)
-    deducted <- pmin(totalShortfall, avail)
-    changed[, , forest] <- changed[, , forest] + shortfall * deducted / (totalShortfall + (totalShortfall == 0))
-    changed[, , otherLand] <- changed[, , otherLand] - deducted * changed[, , otherLand] / (avail + (avail == 0))
+    shortfallForest <- -changed[, , forest] * (changed[, , forest] < 0)
+    stopifnot(all(shortfallForest >= 0))
+    totalShortfallForest <- dimSums(shortfallForest, 3)
+
+    availOther <- changed[, , otherLand] * (changed[, , otherLand] > 0)
+    stopifnot(all(availOther >= 0))
+    totalAvailOther <- dimSums(availOther, 3)
+
+    deducted <- pmin(totalShortfallForest, totalAvailOther)
+
+    fact <- shortfallForest / (totalShortfallForest + (totalShortfallForest == 0))
+    stopifnot(all(0 <= fact & fact <= 1))
+    changed[, , forest] <- changed[, , forest] + deducted * fact
+
+    fact <- availOther / (totalAvailOther + (totalAvailOther == 0))
+    stopifnot(all(0 <= fact & fact <= 1))
+    changed[, , otherLand] <- changed[, , otherLand] - deducted * fact
   }
 
   # set negative values to 0 and scale to match targetArea
