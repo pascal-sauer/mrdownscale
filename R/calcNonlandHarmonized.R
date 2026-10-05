@@ -29,8 +29,15 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   stopifnot(0 < kgCPerMhaInput, kgCPerMhaInput < Inf)
   getItems(kgCPerMhaInput, 3.1) <- sub("bioh$", "kgC_per_Mha", getItems(kgCPerMhaInput, 3.1))
 
-  xTarget <- calcOutput("NonlandTargetExtrapolated", input = input, target = target,
-                        harmonizationPeriod = hp, aggregate = FALSE)
+  # absoluteChanges only uses the target data up to the harmonization year,
+  # no extrapolation is needed
+  if (harmonization == "absoluteChanges") {
+    xTarget <- calcOutput("NonlandTargetLowRes", input = input, target = target,
+                          endOfHistory = hp[1], aggregate = FALSE)
+  } else {
+    xTarget <- calcOutput("NonlandTargetExtrapolated", input = input, target = target,
+                          harmonizationPeriod = hp, aggregate = FALSE)
+  }
 
   kgCPerMhaTarget <- xTarget[, , "bioh"] / collapseDim(xTarget[, , "wood_harvest_area"])
   kgCPerMhaTarget[!is.finite(kgCPerMhaTarget)] <- min(kgCPerMhaTarget[is.finite(kgCPerMhaTarget)])
@@ -38,9 +45,14 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   getItems(kgCPerMhaTarget, 3.1) <- sub("bioh$", "kgC_per_Mha", getItems(kgCPerMhaTarget, 3.1))
 
   harmonizationInput <- mbind(xInput[, , "wood_harvest_area", invert = TRUE], kgCPerMhaInput)
-  fertilizerTgTarget <- toolFertilizerTg(xTarget[, , "fertilizer"],
-                                         calcOutput("LandTargetExtrapolated", input = input, target = target,
-                                                    harmonizationPeriod = hp, aggregate = FALSE))
+  if (harmonization == "absoluteChanges") {
+    landTargetMha <- calcOutput("LandTargetLowRes", input = input, target = target,
+                                endOfHistory = hp[1], aggregate = FALSE)
+  } else {
+    landTargetMha <- calcOutput("LandTargetExtrapolated", input = input, target = target,
+                                harmonizationPeriod = hp, aggregate = FALSE)
+  }
+  fertilizerTgTarget <- toolFertilizerTg(xTarget[, , "fertilizer"], landTargetMha)
   harmonizationTarget <- mbind(xTarget[, , c("wood_harvest_area", "fertilizer"), invert = TRUE],
                                kgCPerMhaTarget, fertilizerTgTarget)
 
@@ -51,12 +63,25 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
                                   harmonizationPeriod = hp,
                                   harmonization = harmonization, aggregate = FALSE)
   out[, , "fertilizer"] <- toolFertilizerKgPerHa(out[, , "fertilizer"], landHarmonizedMha)
+  if (harmonization == "absoluteChanges") {
+    # where the zero clamping of the harmonizer removed all cropland of a cell,
+    # the fertilizer rate is undefined, so set it to zero like toolFertilizerKgPerHa
+    # does for cells without fertilizer
+    fertilizer <- out[, , "fertilizer"]
+    fertilizer[fertilizer == Inf] <- 0
+    out[, , "fertilizer"] <- fertilizer
+  }
 
   harvestArea <- calcOutput("WoodHarvestAreaHarmonized", input = input, target = target,
                             harmonizationPeriod = hp, harmonization = harmonization, aggregate = FALSE)
 
   # adapt bioh to harmonized harvest area
   kgCPerMhaHarmonized <- out[, , getItems(kgCPerMhaTarget, 3)]
+  if (harmonization == "absoluteChanges") {
+    # the zero clamping of the harmonizer can drive rates to zero, replace them
+    # with the smallest positive rate like the floors for input and target data
+    kgCPerMhaHarmonized[kgCPerMhaHarmonized == 0] <- min(kgCPerMhaHarmonized[kgCPerMhaHarmonized > 0])
+  }
   stopifnot(0 < kgCPerMhaHarmonized, kgCPerMhaHarmonized < Inf)
   biohCalculated <- kgCPerMhaHarmonized * collapseDim(harvestArea)
   getItems(biohCalculated, 3.1) <- sub("kgC_per_Mha$", "bioh", getItems(biohCalculated, 3.1))
@@ -97,12 +122,17 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
                      10^-4, "Returning reference data before harmonization period")
 
   # for years after harmonization make sure that total global fertilizer applied matches input
-  years <- getYears(out, TRUE)[getYears(out, TRUE) >= hp[2]]
-  fertilizerInput <- nonlandInput[, years, "fertilizer"]
-  fertilizerOutput <- toolFertilizerTg(out[, years, "fertilizer"], landHarmonizedMha[, years, ])
-  toolExpectLessDiff(fertilizerInput, fertilizerOutput, 10^-5,
-                     "Fertilizer after harmonization period matches input data")
-  toolCheckFertilizer(out[, , "fertilizer"])
+  # absoluteChanges intentionally deviates from the input data after the
+  # harmonization period (target in harmonization year plus input deltas),
+  # so these checks do not apply there
+  if (harmonization != "absoluteChanges") {
+    years <- getYears(out, TRUE)[getYears(out, TRUE) >= hp[2]]
+    fertilizerInput <- nonlandInput[, years, "fertilizer"]
+    fertilizerOutput <- toolFertilizerTg(out[, years, "fertilizer"], landHarmonizedMha[, years, ])
+    toolExpectLessDiff(fertilizerInput, fertilizerOutput, 10^-5,
+                       "Fertilizer after harmonization period matches input data")
+    toolCheckFertilizer(out[, , "fertilizer"])
+  }
 
   return(list(x = out,
               isocountries = FALSE,
