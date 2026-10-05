@@ -43,16 +43,11 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
             hy %in% targetYears)
   xInput <- xInput[getItems(xTarget, 1), , getItems(xTarget, 3)]
 
-  # total area of each cell, constant over time
-  targetArea <- dimSums(setYears(xTarget[, hy, ], NULL), 3)
-  stopifnot(all(abs(dimSums(xTarget, 3) - targetArea) < 10^-5))
-
   # apply absolute changes of input data to target data of the harmonization year
   # negative numbers are possible if input data loses more area of a
   # category than the target data has in the harmonization year
   raw <- setYears(xTarget[, hy, ], NULL) + (xInput[, inputYears > hy, ] - setYears(xInput[, hy, ], NULL))
   changed <- raw
-  stopifnot(all(abs(dimSums(changed, 3) - targetArea) < 10^-5))
 
   croplandPattern <- "_rainfed|_irrigated"
   groups <- list(
@@ -60,46 +55,64 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
     cropland = grep(croplandPattern, getItems(changed, 3), value = TRUE),
     "pasture and rangeland" = intersect(c("pastr", "range"), getItems(changed, 3))
   )
-  stopifnot(setequal(c(unlist(groups), "urban"), getItems(changed, 3)))
-  # for crops, negative values are first compensated by scaling
-  # the corresponding rainfed/irrigated twin of the same crop.
-  # Categories without twin (incl. all non-crops) are compensated by scaling the whole group.
-  for (group in groups) {
-    groupArea <- changed[, , group]
-    groupTarget <- pmax(dimSums(groupArea, 3), 0)
+  # like the fade harmonizers land use data is identified by its category
+  # taxonomy, but also partial overlap counts as land so that data with
+  # invalid categories is rejected instead of treated as nonland
+  isLand <- any(getItems(changed, 3) %in% c(unlist(groups), "urban"))
 
-    cropItems <- grep(croplandPattern, group, value = TRUE)
-    pairKey <- sub(croplandPattern, "", cropItems)
-    pairs <- split(cropItems, pairKey)
-    for (pair in pairs[lengths(pairs) == 2]) {
-      pairArea <- groupArea[, , pair]
-      groupArea[, , pair] <- toolHandleNegatives(pairArea, targetArea = pmax(dimSums(pairArea, 3), 0))
+  if (isLand) {
+    # total area of each cell, constant over time
+    targetArea <- dimSums(setYears(xTarget[, hy, ], NULL), 3)
+    stopifnot(all(abs(dimSums(xTarget, 3) - targetArea) < 10^-5))
+    stopifnot(all(abs(dimSums(changed, 3) - targetArea) < 10^-5))
+
+    stopifnot(setequal(c(unlist(groups), "urban"), getItems(changed, 3)))
+    # for crops, negative values are first compensated by scaling
+    # the corresponding rainfed/irrigated twin of the same crop.
+    # Categories without twin (incl. all non-crops) are compensated by scaling the whole group.
+    for (group in groups) {
+      groupArea <- changed[, , group]
+      groupTarget <- pmax(dimSums(groupArea, 3), 0)
+
+      cropItems <- grep(croplandPattern, group, value = TRUE)
+      pairKey <- sub(croplandPattern, "", cropItems)
+      pairs <- split(cropItems, pairKey)
+      for (pair in pairs[lengths(pairs) == 2]) {
+        pairArea <- groupArea[, , pair]
+        groupArea[, , pair] <- toolHandleNegatives(pairArea, targetArea = pmax(dimSums(pairArea, 3), 0))
+      }
+
+      changed[, , group] <- toolHandleNegatives(groupArea, targetArea = groupTarget)
     }
 
-    changed[, , group] <- toolHandleNegatives(groupArea, targetArea = groupTarget)
+    urban <- changed[, , "urban"]
+    stopifnot(all(urban >= -10^-5))
+    urban[urban < 0] <- 0
+    changed[, , "urban"] <- urban
+
+    nonUrbanTarget <- targetArea - dimSums(urban, 3)
+    stopifnot(all(nonUrbanTarget >= -10^-5))
+    nonUrbanTarget[nonUrbanTarget < 0] <- 0
+    nonUrban <- setdiff(getItems(changed, 3), "urban")
+    changed[, , nonUrban] <- toolHandleNegatives(changed[, , nonUrban], targetArea = nonUrbanTarget)
+
+    out <- mbind(xTarget[, targetYears <= hy, ], changed)
+
+    # prim expansion is expected after harmonization due to prim differences between input and target dataset
+    out <- toolReplaceExpansion(out, "primf", "secdf", warnThreshold = 100)
+    out <- toolReplaceExpansion(out, "primn", "secdn", warnThreshold = 100)
+
+    toolReportHarmonizationQuality(raw, out, harmonizationPeriod = hp, inputYears = inputYears, groups = groups)
+    toolReportAreaDeviation(raw, out, groups = groups)
+
+    stopifnot(all(abs(dimSums(out, 3) - targetArea) < 10^-5))
+
+    return(out)
+  } else {
+    # nonland data is not area conservative, apply the raw absolute changes to
+    # the target data and just clamp negative values to zero
+    out <- mbind(xTarget[, targetYears <= hy, ], raw)
+    out[out < 0] <- 0
+    return(out)
   }
-
-  urban <- changed[, , "urban"]
-  stopifnot(all(urban >= -10^-5))
-  urban[urban < 0] <- 0
-  changed[, , "urban"] <- urban
-
-  nonUrbanTarget <- targetArea - dimSums(urban, 3)
-  stopifnot(all(nonUrbanTarget >= -10^-5))
-  nonUrbanTarget[nonUrbanTarget < 0] <- 0
-  nonUrban <- setdiff(getItems(changed, 3), "urban")
-  changed[, , nonUrban] <- toolHandleNegatives(changed[, , nonUrban], targetArea = nonUrbanTarget)
-
-  out <- mbind(xTarget[, targetYears <= hy, ], changed)
-
-  # prim expansion is expected after harmonization due to prim differences between input and target dataset
-  out <- toolReplaceExpansion(out, "primf", "secdf", warnThreshold = 100)
-  out <- toolReplaceExpansion(out, "primn", "secdn", warnThreshold = 100)
-
-  toolReportHarmonizationQuality(raw, out, harmonizationPeriod = hp, inputYears = inputYears, groups = groups)
-  toolReportAreaDeviation(raw, out, groups = groups)
-
-  stopifnot(all(abs(dimSums(out, 3) - targetArea) < 10^-5))
-
-  return(out)
 }

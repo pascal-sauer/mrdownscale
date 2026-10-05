@@ -4,16 +4,17 @@
 \alias{toolHandleNegatives}
 \title{toolHandleNegatives}
 \usage{
-toolHandleNegatives(x, targetArea = NULL, allowNegativeTarget = FALSE)
+toolHandleNegatives(x, targetArea = NULL, lastScaled = character(0))
 }
 \arguments{
 \item{x}{magclass object, may contain negative values}
 
 \item{targetArea}{optional target area per cell and year, recycled if it has
-fewer years than x}
+fewer years than x, must not be negative}
 
-\item{allowNegativeTarget}{if TRUE, categories of cells with a negative
-target area are set to zero instead of raising an error}
+\item{lastScaled}{character vector of category names that are only scaled
+down after all other categories have been scaled down to zero, names not
+present in x are ignored}
 }
 \value{
 x without negative values, category sums matching the target area
@@ -24,6 +25,12 @@ that the category sums of every cell and year match the target area, which
 defaults to the category sums of x before zeroing.
 }
 \details{
+Categories listed in lastScaled are only scaled down after all other
+categories have been scaled down to zero, so they are protected against
+compensation cuts unless the other categories cannot absorb the excess area
+alone. With the default lastScaled = character(0) all categories are scaled
+down proportionally together.
+
 Intended to be applied to a group of land cover categories (e.g. forest
 plus other land), so that negative values in one category are compensated
 by the others without changing the total group area.

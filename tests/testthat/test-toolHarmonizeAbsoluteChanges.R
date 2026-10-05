@@ -354,6 +354,45 @@ test_that("toolHarmonizeAbsoluteChanges rejects inconsistent or invalid input da
   expect_error(toolHarmonizeAbsoluteChanges(naInput, xTarget, c(2020, 2020)))
 })
 
+test_that("toolHarmonizeAbsoluteChanges works with nonland data", {
+  nonlandItems <- c("bioh.indu", "bioh.animal")
+  # nonland data is not constant-sum over time, this must not be rejected
+  xTarget <- new.magpie(c("reg.one", "reg.two"), years = c(2010, 2020), names = nonlandItems, fill = 0)
+  xTarget["reg.one", 2010, ] <- c(1, 5)
+  xTarget["reg.one", 2020, ] <- c(10, 2)
+  xTarget["reg.two", 2010, ] <- c(3, 4)
+  xTarget["reg.two", 2020, ] <- c(8, 7)
+
+  xInput <- new.magpie(c("reg.one", "reg.two"), years = c(2020, 2025, 2030), names = nonlandItems, fill = 0)
+  xInput["reg.one", 2020, ] <- c(20, 6)
+  # reg.one bioh.animal raw value is 2 + (3 - 6) = -1, so the clamp at zero is exercised
+  xInput["reg.one", 2025, ] <- c(25, 3)
+  xInput["reg.one", 2030, ] <- c(30, 0)
+  xInput["reg.two", 2020, ] <- c(4, 10)
+  xInput["reg.two", 2025, ] <- c(6, 12)
+  xInput["reg.two", 2030, ] <- c(5, 8)
+
+  expect_no_error(
+    out <- suppressWarnings(suppressMessages(
+      toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020))
+    ))
+  )
+  expect_equal(getYears(out, as.integer = TRUE), c(2010, 2020, 2025, 2030))
+
+  # until the harmonization year the target is used unchanged
+  expect_equal(as.vector(out["reg.one", 2010, ]), c(1, 5))
+  expect_equal(as.vector(out["reg.one", 2020, ]), c(10, 2))
+  expect_equal(as.vector(out["reg.two", 2020, ]), c(8, 7))
+
+  # afterwards the raw absolute changes of the input are applied, clamped at zero
+  expect_equal(as.vector(out["reg.one", 2025, ]), c(15, 0))
+  expect_equal(as.vector(out["reg.one", 2030, ]), c(20, 0))
+  expect_equal(as.vector(out["reg.two", 2025, ]), c(10, 9))
+  expect_equal(as.vector(out["reg.two", 2030, ]), c(9, 5))
+
+  expect_true(all(out >= 0))
+})
+
 test_that("toolGetHarmonizer returns the absoluteChanges harmonizer", {
   harmonizer <- toolGetHarmonizer("absoluteChanges")
   expect_true(is.function(harmonizer))
