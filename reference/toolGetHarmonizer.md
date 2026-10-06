@@ -12,7 +12,8 @@ toolGetHarmonizer(harmonizerName)
 
 - harmonizerName:
 
-  name of a harmonizer function, currently offset, fade, fadeForest
+  name of a harmonizer function, currently offset, fade, fadeForest,
+  absoluteChanges
 
 ## Value
 
@@ -22,7 +23,8 @@ harmonizer function
 
 [`toolHarmonizeOffset`](toolHarmonizeOffset.md),
 [`toolHarmonizeFade`](toolHarmonizeFade.md),
-[`toolHarmonizeFadeForest`](toolHarmonizeFadeForest.md)
+[`toolHarmonizeFadeForest`](toolHarmonizeFadeForest.md),
+[`toolHarmonizeAbsoluteChanges`](toolHarmonizeAbsoluteChanges.md)
 
 ## Author
 

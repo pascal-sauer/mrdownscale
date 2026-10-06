@@ -165,7 +165,7 @@ First, check where madrat stores source data:
 
 ``` r
 madrat::getConfig("sourcefolder", verbose = FALSE)
-#> [1] "/tmp/Rtmp9Gpd6u/madrat/sources"
+#> [1] "/tmp/Rtmpy5fV4q/madrat/sources"
 ```
 
 In this folder, create a new subfolder called `CoolNewModel` and place
@@ -206,7 +206,7 @@ mrdownscale:::readWITCH
 #>         stop("Unexpected subtype, only data and resolutionMapping are accepted")
 #>     }
 #> }
-#> <bytecode: 0x555d95bc2de8>
+#> <bytecode: 0x55e962962730>
 #> <environment: namespace:mrdownscale>
 ```
 

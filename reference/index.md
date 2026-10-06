@@ -68,6 +68,10 @@
   toolFillYearsSpatRaster
 - [`toolGetHarmonizer()`](toolGetHarmonizer.md) : toolGetHarmonizer
 - [`toolGetSmallerArea()`](toolGetSmallerArea.md) : toolGetSmallerArea
+- [`toolHandleNegatives()`](toolHandleNegatives.md) :
+  toolHandleNegatives
+- [`toolHarmonizeAbsoluteChanges()`](toolHarmonizeAbsoluteChanges.md) :
+  toolHarmonizeAbsoluteChanges
 - [`toolHarmonizeFade()`](toolHarmonizeFade.md) : toolHarmonizeFade
 - [`toolHarmonizeFadeForest()`](toolHarmonizeFadeForest.md) :
   toolHarmonizeFadeForest
@@ -82,6 +86,8 @@
   toolPrimExpansionCheck
 - [`toolReplaceExpansion()`](toolReplaceExpansion.md) :
   toolReplaceExpansion
+- [`toolReportAreaDeviation()`](toolReportAreaDeviation.md) :
+  toolReportAreaDeviation
 - [`toolResolutionMapping()`](toolResolutionMapping.md) :
   toolResolutionMapping
 - [`toolScaleConstantArea()`](toolScaleConstantArea.md) :

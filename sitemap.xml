@@ -1,5 +1,7 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>/404.html</loc></url>
+<url><loc>/CODE_STYLE.html</loc></url>
+<url><loc>/CONTRIBUTING.html</loc></url>
 <url><loc>/LICENSE.html</loc></url>
 <url><loc>/articles/basicUsage.html</loc></url>
 <url><loc>/articles/downscaleNewModel.html</loc></url>
@@ -54,6 +56,8 @@
 <url><loc>/reference/toolFillYearsSpatRaster.html</loc></url>
 <url><loc>/reference/toolGetHarmonizer.html</loc></url>
 <url><loc>/reference/toolGetSmallerArea.html</loc></url>
+<url><loc>/reference/toolHandleNegatives.html</loc></url>
+<url><loc>/reference/toolHarmonizeAbsoluteChanges.html</loc></url>
 <url><loc>/reference/toolHarmonizeFade.html</loc></url>
 <url><loc>/reference/toolHarmonizeFadeForest.html</loc></url>
 <url><loc>/reference/toolHarmonizeOffset.html</loc></url>
@@ -62,6 +66,7 @@
 <url><loc>/reference/toolMaxHarvestPerYear.html</loc></url>
 <url><loc>/reference/toolPrimExpansionCheck.html</loc></url>
 <url><loc>/reference/toolReplaceExpansion.html</loc></url>
+<url><loc>/reference/toolReportAreaDeviation.html</loc></url>
 <url><loc>/reference/toolResolutionMapping.html</loc></url>
 <url><loc>/reference/toolScaleConstantArea.html</loc></url>
 <url><loc>/reference/toolTransitionsBasic.html</loc></url>
