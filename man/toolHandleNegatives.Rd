@@ -4,16 +4,13 @@
 \alias{toolHandleNegatives}
 \title{toolHandleNegatives}
 \usage{
-toolHandleNegatives(x, targetArea = NULL, allowNegativeTarget = FALSE)
+toolHandleNegatives(x, targetArea = NULL)
 }
 \arguments{
 \item{x}{magclass object, may contain negative values}
 
 \item{targetArea}{optional target area per cell and year, recycled if it has
-fewer years than x}
-
-\item{allowNegativeTarget}{if TRUE, categories of cells with a negative
-target area are set to zero instead of raising an error}
+fewer years than x, must not be negative}
 }
 \value{
 x without negative values, category sums matching the target area

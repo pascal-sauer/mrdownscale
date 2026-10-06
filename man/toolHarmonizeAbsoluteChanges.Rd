@@ -11,9 +11,9 @@ toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod)
 
 \item{xTarget}{target data as magpie object}
 
-\item{harmonizationPeriod}{Single integer value, the year the absolute
-changes of the input data are applied to, must be present in both input
-and target data}
+\item{harmonizationPeriod}{Two identical integer values, the year the
+absolute changes of the input data are applied to, must be present in both
+input and target data}
 }
 \value{
 harmonized data set as magpie object with data from target for years
@@ -30,12 +30,16 @@ harmonization year.
 \details{
 Negative values are handled within groups of related categories (forest &
 other land; all cropland types; pasture & rangeland), so that they are
-compensated by the other categories of the group. Groups with a negative
-total area are set to zero. Afterwards, if any negatives remain, all
-categories except urban are scaled down to keep the total area constant.
-These corrections deviate from the absolute changes of the input data, so
-their magnitude is reported with status messages by
-toolReportHarmonizationQuality.
+compensated by the other categories of the group. For crops, negative values
+are first compensated by the corresponding rainfed/irrigated twin of the
+same crop, which keeps that pair's total area, including biofuel types like
+c3ann_rainfed_biofuel_1st_gen. Crop categories without their twin are
+compensated by the whole group. Groups with a negative total area are set to
+zero. Afterwards, if any negatives remain, all categories except urban are
+scaled down to keep the total area constant.
+This group compensation and constant total area applies only to land use
+data, which is identified by its category taxonomy. For nonland data, which
+is not area conservative, negative values are simply clamped to zero.
 }
 \author{
 Pascal Sauer
