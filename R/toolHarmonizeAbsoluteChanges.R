@@ -15,6 +15,9 @@
 #' compensated by the whole group. Groups with a negative total area are set to
 #' zero. Afterwards, if any negatives remain, all categories except urban are
 #' scaled down to keep the total area constant.
+#' This group compensation and constant total area applies only to land use
+#' data, which is identified by its category taxonomy. For nonland data, which
+#' is not area conservative, negative values are simply clamped to zero.
 #'
 #' @param xInput input data as magpie object
 #' @param xTarget target data as magpie object
