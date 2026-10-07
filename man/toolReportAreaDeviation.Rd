@@ -20,7 +20,7 @@ category must be in one of the groups or be "urban"}
 \description{
 Reports, per category group and per variable, how much the corrected output
 deviates from the raw input data: the positive and the negative deviations
-(xRaw - xOut) accumulated separately over all cells and timesteps, as mean
+(xOut - xRaw) accumulated separately over all cells and timesteps, as mean
 per timestep in Mha and as a percentage of the output area accumulated over
 the same timesteps, plus the net change as the sum of both columns, in six
 columns: =%, +%, -%, =Mha, +Mha, -Mha.

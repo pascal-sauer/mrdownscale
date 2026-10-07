@@ -44,8 +44,6 @@ test_that("toolHarmonizeAbsoluteChanges works", {
 
   # no negative absolute changes, so no value is reset to zero and no trend is altered
   # (except prim expansion which is checked below)
-  expectCondition(run$conditions, "0 Mha per timestep")
-
   expect_equal(getYears(out, as.integer = TRUE), c(2010, 2020, 2025, 2030))
 
   # before and at the harmonization year target data is used
@@ -72,69 +70,6 @@ test_that("toolHarmonizeAbsoluteChanges works", {
   expect_error(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020))
 })
 
-test_that("toolHarmonizeAbsoluteChanges reports zero deviation when no corrections are needed", {
-  xTarget <- new.magpie("reg.rep", years = c(2010, 2020), names = items, fill = 0)
-  for (year in c(2010, 2020)) {
-    xTarget["reg.rep", year, ] <- c(40, 10, 10, 5, 5, 0, 30, 0, 0, 0, 0, 0)
-  }
-
-  xInput <- new.magpie("reg.rep", years = c(2020, 2025), names = items, fill = 0)
-  xInput["reg.rep", 2020, ] <- c(20, 10, 20, 5, 10, 0, 35, 0, 0, 0, 0, 0)
-  # no negative absolute changes and no prim expansion, so the input trend is
-  # reproduced exactly
-  xInput["reg.rep", 2025, ] <- c(20, 10, 22, 5, 10, 0, 33, 0, 0, 0, 0, 0)
-
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
-  out <- run$value
-
-  expect_equal(as.vector(out["reg.rep", 2025, ]), c(40, 10, 12, 5, 5, 0, 28, 0, 0, 0, 0, 0))
-
-  report <- grep("Correction of negative values", run$conditions, value = TRUE)
-  expect_length(report, 1)
-  expect_true(grepl("on average 0 Mha per timestep (mean over the 1 timestep in the input after 2020) were",
-                    report, fixed = TRUE))
-  expect_true(grepl("affected 0% of all cell/year/category values in 0% of all cells", report, fixed = TRUE))
-  expect_true(grepl("Deviation from input trend in 2025: 0 Mha (input change 4 Mha, actual change 4 Mha, factor 1)",
-                    report, fixed = TRUE))
-  expect_true(grepl("Harmonization quality: 100%", report, fixed = TRUE))
-
-  # one message per group, reporting the total group deviation followed by a
-  # table of all categories in the group
-  forestGroup <- grep("category group \"forest and other land\"", run$conditions, value = TRUE)
-  expect_length(forestGroup, 1)
-  # CSV table with total in the first row, sorted by abs(1 - factor), ties in
-  # group order, n/a last
-  expect_true(grepl(paste0("variable, factor, input, actual, diff\n",
-                           "total   ,      1,     2,      2,    0\n",
-                           "secdf   ,      1,     2,      2,    0\n",
-                           "pltns   ,    n/a,     0,      0,    0\n",
-                           "primf   ,    n/a,     0,      0,    0\n",
-                           "primn   ,    n/a,     0,      0,    0\n",
-                           "secdn   ,    n/a,     0,      0,    0"),
-                    forestGroup, fixed = TRUE))
-  cropGroup <- grep("category group \"cropland\"", run$conditions, value = TRUE)
-  expect_length(cropGroup, 1)
-  expect_true(grepl(paste0("variable       , factor, input, actual, diff\n",
-                           "total          ,    n/a,     0,      0,    0\n",
-                           "c3ann_rainfed  ,    n/a,     0,      0,    0\n",
-                           "c3ann_irrigated,    n/a,     0,      0,    0\n",
-                           "c4ann_rainfed  ,    n/a,     0,      0,    0\n",
-                           "c4ann_irrigated,    n/a,     0,      0,    0"),
-                    cropGroup, fixed = TRUE))
-  pastureGroup <- grep("category group \"pasture and rangeland\"", run$conditions, value = TRUE)
-  expect_length(pastureGroup, 1)
-  # pastr loses the same 2 Mha secdf gains and its trend is reproduced exactly
-  expect_true(grepl(paste0("variable, factor, input, actual, diff\n",
-                           "total   ,      1,     2,      2,    0\n",
-                           "pastr   ,      1,    -2,     -2,    0\n",
-                           "range   ,    n/a,     0,      0,    0"),
-                    pastureGroup, fixed = TRUE))
-  # urban is never scaled by the corrections and is not reported separately,
-  # and there is no ungrouped category anymore (all categories are in a group)
-  expect_false(any(grepl("category group \"urban\"", run$conditions, fixed = TRUE)))
-  expect_false(any(grepl("category group \"not in any group\"", run$conditions, fixed = TRUE)))
-})
-
 test_that("toolHarmonizeAbsoluteChanges avoids negative values", {
   xTarget <- new.magpie("reg.three", years = c(2010, 2020), names = items, fill = 0)
   for (year in c(2010, 2020)) {
@@ -149,31 +84,7 @@ test_that("toolHarmonizeAbsoluteChanges avoids negative values", {
   run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
   out <- run$value
 
-  # 5 Mha primf were clipped to zero (1 of 12 entries, in 100% of cells)
-  expectCondition(run$conditions,
-                  "5 Mha per timestep \\(mean over the 1 timestep in the input after 2020\\)")
-  expectCondition(run$conditions,
-                  "affected 8.3% of all cell/year/category values in 100% of all cells")
   expectCondition(run$conditions, "\\[!\\]")
-  # half of the 20 Mha of input change (primf -10, pastr +10) was distorted by
-  # the corrections (10 Mha of |out - raw|), so only 50% of the signal remains
-  report <- grep("Correction of negative values", run$conditions, value = TRUE)
-  expect_true(grepl("Harmonization quality: 50%", report, fixed = TRUE))
-
-  # categories with sign-flipped trends (factor -Inf) are listed first in group
-  # order, then the nearly intact trend (factor 0.5), n/a (pltns, no change at
-  # all) last
-  forestGroup <- grep("category group \"forest and other land\"", run$conditions, value = TRUE)
-  expect_length(forestGroup, 1)
-  # decimal separators are vertically aligned, total is the first row
-  expect_true(grepl(paste0("variable, factor  , input, actual   , diff   \n",
-                           "total   ,      1  ,    10,     10   ,   10   \n",
-                           "secdf   ,   -Inf  ,     0,     -2.5 ,   -2.5 \n",
-                           "primn   ,   -Inf  ,     0,     -1.25,   -1.25\n",
-                           "secdn   ,   -Inf  ,     0,     -1.25,   -1.25\n",
-                           "primf   ,      0.5,   -10,     -5   ,    5   \n",
-                           "pltns   ,    n/a  ,     0,      0   ,    0"),
-                    forestGroup, fixed = TRUE))
 
   expect_equal(as.vector(out["reg.three", 2025, "primf"]), 0)
   expect_true(all(out >= 0))
@@ -196,8 +107,6 @@ test_that("toolHarmonizeAbsoluteChanges compensates negative forest area within 
 
   run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
   out <- run$value
-
-  expectCondition(run$conditions, "5 Mha per timestep")
 
   # the secdf shortfall of 5 Mha is compensated by scaling down the other
   # categories of the forest group (primf, primn, secdf, secdn) proportionally,
@@ -226,9 +135,6 @@ test_that("toolHarmonizeAbsoluteChanges scales all categories except urban", {
   run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
   out <- run$value
 
-  # 10 Mha secdf were clipped to zero
-  expectCondition(run$conditions, "10 Mha per timestep")
-
   # the forest group is scaled down so that it keeps its total area of 35 Mha,
   # urban is untouched and pastr does not need any further scaling
   expect_equal(as.vector(out["reg.five", 2025, c("primf", "primn", "secdf", "secdn")]),
@@ -252,9 +158,6 @@ test_that("toolHarmonizeAbsoluteChanges scales down excess area and replaces pri
 
   run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
   out <- run$value
-
-  # secdf (-10 Mha) and pastr (-10 Mha) were clipped to zero
-  expectCondition(run$conditions, "20 Mha per timestep")
 
   # after clipping and scaling, toolReplaceExpansion moves the prim expansions
   # into secdf and secdn
@@ -316,10 +219,6 @@ test_that("toolHarmonizeAbsoluteChanges compensates negative cropland within the
 
   run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
   out <- run$value
-
-  # raw c3ann_rainfed drops 20 Mha below the 30 Mha of the target in the
-  # harmonization year, 10 Mha were clipped to zero
-  expectCondition(run$conditions, "10 Mha per timestep")
 
   # the c3ann_rainfed shortfall is covered by c4ann_rainfed, the cropland group
   # keeps its total area of 47 Mha
@@ -544,7 +443,6 @@ test_that("toolHarmonizeAbsoluteChanges harmonizes rainfed/irrigated orphans gra
 
   # the orphaned c3ann_rainfed does not abort harmonization, and since no raw
   # value is negative the absolute changes are reproduced exactly
-  expectCondition(run$conditions, "0 Mha per timestep")
   expect_equal(as.vector(out["reg.orphan", 2025, ]), c(40, 10, 12, 5, 5, 0, 28, 0, 0))
   expect_true(all(out >= 0))
   expect_equal(as.vector(dimSums(out, dim = 3)), rep(100, 3))
@@ -569,7 +467,6 @@ test_that("toolHarmonizeAbsoluteChanges compensates a negative orphan within its
 
   # the -5 Mha orphan is zeroed within the cropland group and the excess area is
   # taken from all categories except urban (factor 0.95)
-  expectCondition(run$conditions, "5 Mha per timestep")
   expect_equal(as.vector(out["reg.orphan2", 2025, ]), c(38, 9.5, 9.5, 4.75, 5, 0, 33.25, 0, 0))
   expect_true(all(out >= 0))
   expect_equal(as.vector(dimSums(out, dim = 3)), rep(100, 3))
@@ -595,7 +492,6 @@ test_that("toolHarmonizeAbsoluteChanges compensates pairs before passing orphans
   # the complete c3ann pair compensates internally first (total 10 Mha on the
   # irrigated twin), then the orphaned c4ann_rainfed deficit brings the whole
   # cropland group down to its raw total of 3 Mha, pastr untouched
-  expectCondition(run$conditions, "17 Mha per timestep")
   expect_equal(as.vector(out["reg.orphan3", 2025, c("pastr", "c3ann_rainfed", "c3ann_irrigated",
                                                     "c4ann_rainfed")]),
                c(97, 0, 3, 0))

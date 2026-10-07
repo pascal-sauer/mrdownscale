@@ -44,6 +44,3 @@ docs:           ## Generate the package documentation (man/*.Rd files) and
                 ## NAMESPACE via roxygen2::roxygenize(), view the generated
                 ## documentation with `?package::function`.
 	Rscript -e 'roxygen2::roxygenize()'
-
-harmonize:
-	Rscript -e 'pkgload::load_all(); setConfig(ignorecache="LandHarmonized"); a <- calcOutput("LandHarmonized", input = "magpie", target = "luh3", harmonizationPeriod = c(2020, 2020), harmonization = "absoluteChanges", aggregate = FALSE)'
