@@ -16,7 +16,7 @@ For our coding style, see the CODE_STYLE.md file.
 To evaluate your changes interactively in an R session:
 - Use `devtools::load_all()` from within the package folder to load the current version
 - Use `madrat::setConfig(ignorecache = c("calcMyFunction", "readMyData"))` to force the re-execution of your function
-- Execute your function through `calcOutput`/`readSource`/`retrieveData`
+- Never call read/correct/convert/calc/full functions directly, but via `readSource`/`calcOutput`/`retrieveData` (bad: `readLUH3()`, good: `readSource("LUH3")`)
 
 ## Note on Caching in madrat
 - madrat computes cache keys from the source of a function and its dependencies (including `tool*` functions); auxiliaries defined outside a `calc*`/`read*`/`retrieveData` body are not in the cache key, so changing them won't invalidate cached outputs
@@ -30,7 +30,7 @@ To evaluate your changes interactively in an R session:
   - Single test file: `devtools::test_file("tests/testthat/test_myFunction.R")`
 
 ## Overall Development Process
-- Before pushing your changes, you need to run `lucode2::buildLibrary()`, which will check the new version and take care of updating metadata
+- Before pushing, run `lucode2::buildLibrary()` to check your code and update metadata
 - Every published change needs a new version (we follow semantic versioning)
 - For publishing your change, in general: open a PR, then merge it
 - If your change is very small and the repository allows it: push directly

@@ -39,11 +39,11 @@ test_that("toolReportAreaDeviation reports positive and negative deviations sepa
   cropGroup <- gsub("[[:space:]]", "", grep("group \"cropland\"", run$conditions, value = TRUE))
   expect_length(cropGroup, 1)
   expect_length(grep("forest", run$conditions), 0)
-  # deviations of +2, +2, -2, -1 Mha accumulate to +4/-3 Mha over the two
-  # timesteps, means +2/-1.5 Mha, 39 Mha of output area give +10.3/-7.69 %,
-  # net change +1 Mha is +0.5 Mha per timestep and 2.56 %
-  expect_match(cropGroup, "c3ann_rainfed,2\\.56,10\\.3,-7\\.69,0\\.5,2,-1\\.5")
-  expect_match(cropGroup, "total,2\\.56,10\\.3,-7\\.69,0\\.5,2,-1\\.5")
+  # deviations of -2, -2, +2, +1 Mha accumulate to -4/+3 Mha over the two
+  # timesteps, means -2/+1.5 Mha, 39 Mha of output area give -10.3/+7.69 %,
+  # net change -1 Mha is -0.5 Mha per timestep and -2.56 %
+  expect_match(cropGroup, "c3ann_rainfed,-2\\.56,7\\.69,-10\\.3,-0\\.5,1\\.5,-2")
+  expect_match(cropGroup, "total,-2\\.56,7\\.69,-10\\.3,-0\\.5,1\\.5,-2")
 })
 
 test_that("toolReportAreaDeviation sorts by gross deviation and sums group totals", {
@@ -68,11 +68,11 @@ test_that("toolReportAreaDeviation sorts by gross deviation and sums group total
 
   cropGroup <- gsub("[[:space:]]", "", grep("group \"cropland\"", run$conditions, value = TRUE))
   expect_length(cropGroup, 1)
-  # c3ann_rainfed: net 0, +1/-1 over output area 20; c4ann_rainfed: net +7,
-  # +7/0 over output area 34; totals: net +7, +8/-1 over output area 54
-  expect_match(cropGroup, "c4ann_rainfed,20\\.6,20\\.6,0,3\\.5,3\\.5,0")
+  # c3ann_rainfed: net 0, +1/-1 over output area 20; c4ann_rainfed: net -7,
+  # 0/-7 over output area 34; totals: net -7, +1/-8 over output area 54
+  expect_match(cropGroup, "c4ann_rainfed,-20\\.6,0,-20\\.6,-3\\.5,0,-3\\.5")
   expect_match(cropGroup, "c3ann_rainfed,0,5,-5,0,0\\.5,-0\\.5")
-  expect_match(cropGroup, "total,13,14\\.8,-1\\.85,3\\.5,4,-0\\.5")
+  expect_match(cropGroup, "total,-13,1\\.85,-14\\.8,-3\\.5,0\\.5,-4")
   expect_true(gregexpr("c4ann_rainfed", cropGroup)[[1]][1] <
                 gregexpr("c3ann_rainfed", cropGroup)[[1]][1])
 })
@@ -92,8 +92,8 @@ test_that("toolReportAreaDeviation handles zero output area", {
                      names = c("c4ann_rainfed", "urban"), fill = 0)
   xRaw <- new.magpie("reg.a", years = c(2025, 2030),
                      names = c("c4ann_rainfed", "urban"), fill = 0)
-  # the output has no area of this variable, so only the net positive
-  # deviation is infinite and the absent negative one is n/a, not NaN
+  # the output has no area of this variable, so only the net negative
+  # deviation is infinite and the absent positive one is n/a, not NaN
   xRaw["reg.a", , "c4ann_rainfed"] <- c(1, 0)
 
   run <- captureConditions(toolReportAreaDeviation(
@@ -104,5 +104,5 @@ test_that("toolReportAreaDeviation handles zero output area", {
 
   cropGroup <- gsub("[[:space:]]", "", grep("group \"cropland\"", run$conditions, value = TRUE))
   expect_length(cropGroup, 1)
-  expect_match(cropGroup, "c4ann_rainfed,Inf,Inf,n/a,0\\.5,0\\.5,0")
+  expect_match(cropGroup, "c4ann_rainfed,-Inf,n/a,-Inf,-0\\.5,0,-0\\.5")
 })

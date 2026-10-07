@@ -105,17 +105,15 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
     out <- toolReplaceExpansion(out, "primf", "secdf", warnThreshold = 100)
     out <- toolReplaceExpansion(out, "primn", "secdn", warnThreshold = 100)
 
-    toolReportHarmonizationQuality(raw, out, harmonizationPeriod = hp, inputYears = inputYears, groups = groups)
     toolReportAreaDeviation(raw, out, groups = groups)
 
     stopifnot(all(abs(dimSums(out, 3) - targetArea) < 10^-5))
-
-    return(out)
   } else {
     # nonland data is not area conservative, apply the raw absolute changes to
     # the target data and just clamp negative values to zero
     out <- mbind(xTarget[, targetYears <= hy, ], raw)
     out[out < 0] <- 0
-    return(out)
   }
+
+  return(out)
 }
