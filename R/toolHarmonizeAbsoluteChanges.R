@@ -58,9 +58,10 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
     cropland = grep(croplandPattern, getItems(changed, 3), value = TRUE),
     "pasture and rangeland" = intersect(c("pastr", "range"), getItems(changed, 3))
   )
-  # like the fade harmonizers land use data is identified by its category
-  # taxonomy, but also partial overlap counts as land so that data with
-  # invalid categories is rejected instead of treated as nonland
+  # land data arrives with bare category names (primf) while nonland data
+  # carries dotted set names (bioh.primf), so land is identified through its
+  # taxonomy; partial overlap counts as land so that land data with invalid
+  # categories fails the setequal check instead of being treated as nonland
   isLand <- any(getItems(changed, 3) %in% c(unlist(groups), "urban"))
 
   if (isLand) {
