@@ -86,7 +86,7 @@ calcNonlandHighRes <- function(input, target, harmonizationPeriod, yearsSubset, 
   # for years after harmonization make sure that total global fertilizer matches input
   # absoluteChanges intentionally deviates from the input data after the
   # harmonization period (target in harmonization year plus input deltas),
-  # so these checks do not apply there
+  # so this input match check does not apply there
   if (harmonization != "absoluteChanges") {
     years <- getYears(out, TRUE)
     years <- years[years >= hp[2]]
@@ -95,8 +95,8 @@ calcNonlandHighRes <- function(input, target, harmonizationPeriod, yearsSubset, 
     fertilizerOutput <- toolFertilizerTg(out[, years, "fertilizer"], landHighRes[, years, ])
     toolExpectLessDiff(fertilizerInput, dimSums(fertilizerOutput, 1), 10^-5,
                        "Total global fertilizer after harmonization period matches input data")
-    toolCheckFertilizer(out[, , "fertilizer"])
   }
+  toolCheckFertilizer(out[, , "fertilizer"])
 
   toolExpectTrue(setequal(getItems(out, dim = 3), getItems(x, dim = 3)),
                  "Nonland categories remain unchanged")

@@ -97,3 +97,45 @@ test_that("calcNonlandHarmonized works with harmonization = absoluteChanges", {
   expect_equal(as.vector(x["reg.one", 2025, "wood_harvest_area.primf"]), 1)
   expect_true(all(x >= 0))
 })
+
+test_that("toolCheckFertilizer also runs for absoluteChanges", {
+  # the absolute changes of the input fertilizer (100 to 300 Tg on top of the
+  # 5 Tg of the target in the harmonization year) divided by 100 Mha of
+  # cropland give 2050 kg ha-1 yr-1 in 2025, which is above the plausibility
+  # threshold of 1200 that toolCheckFertilizer reports as a failed check
+  xInput <- new.magpie("reg.one", years = c(2020, 2025), names = nonlandItems, fill = 0)
+  xInput[, 2020, ] <- c(1000, 1000, 1, 1, 1, 1, 100)
+  xInput[, 2025, ] <- c(1000, 1000, 1, 1, 1, 1, 300)
+  attr(xInput, "geometry") <- "point"
+  attr(xInput, "crs") <- "EPSG:4326"
+  getSets(xInput) <- c("region", "id", "year", "category", "data")
+
+  xTarget <- new.magpie("reg.one", years = c(2010, 2020), names = nonlandItems, fill = 1)
+  xTarget[, , "fertilizer.c3ann"] <- 50
+  getSets(xTarget) <- c("region", "id", "year", "category", "data")
+
+  land <- new.magpie("reg.one", years = c(2010, 2020, 2025), names = c("c3ann", "pastr"), fill = 100)
+
+  harvestArea <- new.magpie("reg.one", years = c(2010, 2020, 2025),
+                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf"), fill = 1)
+  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetLowRes = xTarget,
+             LandTargetLowRes = land[, c(2010, 2020), ],
+             LandHarmonized = land,
+             WoodHarvestAreaHarmonized = harvestArea,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+
+  expect_message(
+    calcNonlandHarmonized(input = "magpie", target = "luh3",
+                          harmonizationPeriod = c(2020, 2020),
+                          harmonization = "absoluteChanges"),
+    "Fertilizer application"
+  )
+})
