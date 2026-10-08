@@ -56,7 +56,7 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   harmonizationTarget <- mbind(xTarget[, , c("wood_harvest_area", "fertilizer"), invert = TRUE],
                                kgCPerMhaTarget, fertilizerTgTarget)
 
-  harmonizer <- toolGetHarmonizer(harmonization)
+  harmonizer <- toolGetHarmonizer(harmonization, constantTotal = FALSE)
   out <- harmonizer(harmonizationInput, harmonizationTarget, harmonizationPeriod = hp)
 
   landHarmonizedMha <- calcOutput("LandHarmonized", input = input, target = target,

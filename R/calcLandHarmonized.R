@@ -48,7 +48,7 @@ calcLandHarmonized <- function(input, target, harmonizationPeriod, harmonization
 
   xInput <- toolEqualizeArea(xInput, xTarget[, harmonizationPeriod[1], ])
 
-  harmonizer <- toolGetHarmonizer(harmonization)
+  harmonizer <- toolGetHarmonizer(harmonization, constantTotal = TRUE)
   out <- harmonizer(xInput, xTarget, harmonizationPeriod = harmonizationPeriod)
 
   attr(out, "geometry") <- geometry
