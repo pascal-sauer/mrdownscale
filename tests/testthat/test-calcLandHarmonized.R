@@ -33,9 +33,12 @@ test_that("calcLandHarmonized works with harmonization = absoluteChanges", {
     }
   )
 
-  x <- calcLandHarmonized(input = "magpie", target = "luh3",
-                          harmonizationPeriod = c(harmonizationYear, harmonizationYear),
-                          harmonization = "absoluteChanges")$x
+  x <- expect_warning(
+    calcLandHarmonized(input = "magpie", target = "luh3",
+                       harmonizationPeriod = c(harmonizationYear, harmonizationYear),
+                       harmonization = "absoluteChanges")$x,
+    regexp = "primf is expanding considerably"
+  )
 
   expect_false(is.null(attr(x, "geometry")))
   expect_false(is.null(attr(x, "crs")))
