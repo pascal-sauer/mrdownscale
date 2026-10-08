@@ -19,20 +19,21 @@
 #' timesteps (toolReplaceExpansion caps prim areas at previous timestep).
 #' Hence they are only scaled down once other variables in their group were
 #' scaled down to zero first.
-#' This group compensation and constant total area applies only to land
-#' data, which is identified by its category taxonomy. For nonland data, which
-#' is not area conservative, negative values are simply clamped to zero.
+#' This group compensation and constant total area applies only to data whose
+#' total area is constant (constantTotal = TRUE). For constantTotal = FALSE data
+#' negative values are simply clamped to zero.
 #'
 #' @param xInput input data as magpie object
 #' @param xTarget target data as magpie object
 #' @param harmonizationPeriod Two identical integer values, the year the
 #'   absolute changes of the input data are applied to, must be present in both
 #'   input and target data
+#' @param constantTotal TRUE if the total area of each cell is constant over time
 #' @return harmonized data set as magpie object with data from target for years
 #'   up to and including the harmonization year and absolute changes from input
 #'   relative to the harmonization year afterwards
 #' @author Pascal Sauer
-toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
+toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, constantTotal) {
   hp <- harmonizationPeriod
   stopifnot(length(hp) == 2,
             round(hp) == hp,
@@ -62,13 +63,7 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
     cropland = grep(croplandPattern, getItems(changed, 3), value = TRUE),
     "pasture and rangeland" = intersect(c("pastr", "range"), getItems(changed, 3))
   )
-  # land data arrives with bare category names (primf) while nonland data
-  # carries dotted set names (bioh.primf), so land is identified through its
-  # taxonomy; partial overlap counts as land so that land data with invalid
-  # categories fails the setequal check instead of being treated as nonland
-  isLand <- any(getItems(changed, 3) %in% c(unlist(groups), "urban"))
-
-  if (isLand) {
+  if (constantTotal) {
     # total area of each cell, constant over time
     targetArea <- dimSums(setYears(xTarget[, hy, ], NULL), 3)
     stopifnot(all(abs(dimSums(xTarget, 3) - targetArea) < 10^-5))
@@ -114,8 +109,8 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
 
     stopifnot(all(abs(dimSums(out, 3) - targetArea) < 10^-5))
   } else {
-    # nonland data is not area conservative, apply the raw absolute changes to
-    # the target data and just clamp negative values to zero
+    # without a constant total area there is nothing to keep constant, apply the
+    # raw absolute changes to the target data and just clamp negatives to zero
     out <- mbind(xTarget[, targetYears <= hy, ], raw)
     out[out < 0] <- 0
   }

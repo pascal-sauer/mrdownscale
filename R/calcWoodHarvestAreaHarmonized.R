@@ -57,7 +57,7 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
                           harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
   }
   xTarget <- xTarget[, , "wood_harvest_area"]
-  harmonizer <- toolGetHarmonizer(harmonization)
+  harmonizer <- toolGetHarmonizer(harmonization, constantTotal = FALSE)
   rawHarvestHarmonized <- harmonizer(xInput, xTarget, harmonizationPeriod = harmonizationPeriod)
 
   stopifnot(rawHarvestHarmonized >= 0)
