@@ -21,6 +21,20 @@ test_that("toolHandleNegatives rescales cells to their target area", {
   expect_equal(as.numeric(toolHandleNegatives(x5, targetArea = pmax(dimSums(x5, 3), 0))), c(0.5, 0, 0, 0))
 })
 
+test_that("toolHandleNegatives scales lastScaled categories only as a last resort", {
+  x <- new.magpie(1, names = c("a", "b", "c"), fill = c(1, 1, 0.5))
+  target <- new.magpie(1, names = "target", fill = 0.75)
+  # the excess of 1.75 is fully absorbed by a and b, c stays untouched
+  expect_equal(as.numeric(toolHandleNegatives(x, targetArea = target, lastScaled = "c")),
+               c(0.125, 0.125, 0.5))
+  # a and b are scaled down to zero first, c only absorbs the remaining 0.25
+  expect_equal(as.numeric(toolHandleNegatives(x, targetArea = new.magpie(1, names = "target", fill = 0.25),
+                                              lastScaled = "c")),
+               c(0, 0, 0.25))
+  # without lastScaled the old proportional behavior is unchanged
+  expect_equal(as.numeric(toolHandleNegatives(x, targetArea = target)), c(0.3, 0.3, 0.15))
+})
+
 test_that("toolHandleNegatives errors on invalid input", {
   x <- new.magpie(1, names = c("a", "b"), fill = c(0.5, -1))
   expect_error(toolHandleNegatives(x), "all(targetArea >= 0) is not TRUE", fixed = TRUE)

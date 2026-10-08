@@ -14,8 +14,12 @@
 #' c3ann_rainfed_biofuel_1st_gen. Crop categories without their twin are
 #' compensated by the whole group. Groups with a negative total area are set to
 #' zero. Afterwards, if any negatives remain, all categories except urban are
-#' scaled down to keep the total area constant.
-#' This group compensation and constant total area applies only to land use
+#' scaled down to keep the total area constant. primf and primn cannot regrow,
+#' so if they were scaled down to compensate that would persist in all later
+#' timesteps (toolReplaceExpansion caps prim areas at previous timestep).
+#' Hence they are only scaled down once other variables in their group were
+#' scaled down to zero first.
+#' This group compensation and constant total area applies only to land
 #' data, which is identified by its category taxonomy. For nonland data, which
 #' is not area conservative, negative values are simply clamped to zero.
 #'
@@ -86,7 +90,8 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
         groupArea[, , pair] <- toolHandleNegatives(pairArea, targetArea = pmax(dimSums(pairArea, 3), 0))
       }
 
-      changed[, , group] <- toolHandleNegatives(groupArea, targetArea = groupTarget)
+      changed[, , group] <- toolHandleNegatives(groupArea, targetArea = groupTarget,
+                                                lastScaled = c("primf", "primn"))
     }
 
     changed[, , "urban"] <- pmax(changed[, , "urban"], 0)
@@ -95,13 +100,15 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
     stopifnot(all(nonUrbanTarget >= -10^-5))
     nonUrbanTarget[nonUrbanTarget < 0] <- 0
     nonUrban <- setdiff(getItems(changed, 3), "urban")
-    changed[, , nonUrban] <- toolHandleNegatives(changed[, , nonUrban], targetArea = nonUrbanTarget)
+    changed[, , nonUrban] <- toolHandleNegatives(changed[, , nonUrban], targetArea = nonUrbanTarget,
+                                                 lastScaled = c("primf", "primn"))
 
     out <- mbind(xTarget[, targetYears <= hy, ], changed)
 
-    # prim expansion is expected after harmonization due to prim differences between input and target dataset
-    out <- toolReplaceExpansion(out, "primf", "secdf", warnThreshold = 100)
-    out <- toolReplaceExpansion(out, "primn", "secdn", warnThreshold = 100)
+    # prim expansion is not expected, because we're applying a non-increasing prim trend, and
+    # prim is protected when handling negatives, so warn for small increases
+    out <- toolReplaceExpansion(out, "primf", "secdf")
+    out <- toolReplaceExpansion(out, "primn", "secdn")
 
     toolReportAreaDeviation(raw, out, groups = groups)
 

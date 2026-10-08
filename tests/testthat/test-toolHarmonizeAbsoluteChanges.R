@@ -108,11 +108,11 @@ test_that("toolHarmonizeAbsoluteChanges compensates negative forest area within 
   run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
   out <- run$value
 
-  # the secdf shortfall of 5 Mha is compensated by scaling down the other
-  # categories of the forest group (primf, primn, secdf, secdn) proportionally,
-  # secdf itself is set to 0
+  # the secdf shortfall of 5 Mha is compensated by scaling down the
+  # non-primary categories of the forest group (secdn is scaled to zero),
+  # primf and primn stay untouched
   expect_equal(as.vector(out["reg.four", 2025, c("primf", "primn", "secdf", "secdn", "urban", "pastr")]),
-               c(400 / 11, 100 / 11, 0, 50 / 11, 5, 45))
+               c(40, 10, 0, 0, 5, 45))
   # the forest group keeps its total area
   expect_equal(as.vector(dimSums(out["reg.four", 2025, c("primf", "primn", "secdf", "secdn")], dim = 3)), 50)
   expect_true(all(out >= 0))
@@ -135,13 +135,43 @@ test_that("toolHarmonizeAbsoluteChanges scales all categories except urban", {
   run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
   out <- run$value
 
-  # the forest group is scaled down so that it keeps its total area of 35 Mha,
+  # the forest group is scaled down so that it keeps its total area of 35 Mha:
+  # the non-primary member secdn is scaled to zero first, then primf and primn
+  # absorb the remaining 9 Mha proportionally from their 44 Mha total,
   # urban is untouched and pastr does not need any further scaling
   expect_equal(as.vector(out["reg.five", 2025, c("primf", "primn", "secdf", "secdn")]),
-               c(280 / 9, 28 / 9, 0, 7 / 9))
+               c(40 * 35 / 44, 4 * 35 / 44, 0, 0))
   expect_equal(as.vector(out["reg.five", 2025, c("urban", "pastr")]), c(5, 60))
   expect_true(all(out >= 0))
   expect_equal(as.vector(dimSums(out, dim = 3)), rep(100, 3))
+})
+
+test_that("toolHarmonizeAbsoluteChanges protects primary land from compensation cuts", {
+  xTarget <- new.magpie("reg.prim", years = c(2010, 2020), names = items, fill = 0)
+  for (year in c(2010, 2020)) {
+    xTarget["reg.prim", year, ] <- c(30, 10, 15, 10, 0, 5, 30, 0, 0, 0, 0, 0)
+  }
+
+  xInput <- new.magpie("reg.prim", years = c(2020, 2025, 2030), names = items, fill = 0)
+  xInput["reg.prim", 2020, ] <- c(20, 10, 10, 10, 0, 5, 20, 0, 25, 0, 0, 0)
+  # 25 Mha of cropland are converted to pastr, zeroing the orphaned
+  # c3ann_rainfed and creating 25 Mha of excess area
+  xInput["reg.prim", 2025, ] <- c(20, 10, 10, 10, 0, 5, 45, 0, 0, 0, 0, 0)
+  xInput["reg.prim", 2030, ] <- c(20, 10, 10, 10, 0, 5, 20, 0, 25, 0, 0, 0)
+
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  out <- run$value
+
+  # the 25 Mha excess is absorbed by secdf, secdn, pltns and pastr (factor 12/17),
+  # primf and primn stay at their target values
+  expect_equal(as.vector(out["reg.prim", 2025, ]),
+               c(30, 10, 180 / 17, 120 / 17, 0, 60 / 17, 660 / 17, 0, 0, 0, 0, 0))
+  # since primf was not cut in 2025, its recovery in 2030 is not capped by
+  # toolReplaceExpansion and the target data is reached again
+  expect_equal(as.vector(out["reg.prim", 2030, ]), c(30, 10, 15, 10, 0, 5, 30, 0, 0, 0, 0, 0))
+  expect_true(all(out >= 0))
+  expect_equal(as.vector(dimSums(out, dim = 3)), rep(100, 4))
+  expect_true(!any(grepl("replaced primf expansion", run$conditions)))
 })
 
 test_that("toolHarmonizeAbsoluteChanges scales down excess area and replaces prim expansion", {
@@ -466,8 +496,9 @@ test_that("toolHarmonizeAbsoluteChanges compensates a negative orphan within its
   out <- run$value
 
   # the -5 Mha orphan is zeroed within the cropland group and the excess area is
-  # taken from all categories except urban (factor 0.95)
-  expect_equal(as.vector(out["reg.orphan2", 2025, ]), c(38, 9.5, 9.5, 4.75, 5, 0, 33.25, 0, 0))
+  # taken from all categories except urban, scaling primf and primn only as a last
+  # resort (factor 0.9 applied to the non-primary categories, prim untouched)
+  expect_equal(as.vector(out["reg.orphan2", 2025, ]), c(40, 10, 9, 4.5, 5, 0, 31.5, 0, 0))
   expect_true(all(out >= 0))
   expect_equal(as.vector(dimSums(out, dim = 3)), rep(100, 3))
 })
