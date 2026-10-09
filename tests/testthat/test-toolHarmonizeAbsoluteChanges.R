@@ -197,7 +197,8 @@ test_that("toolHarmonizeAbsoluteChanges caps prim recovery after a compensation 
   # but above the cut values of 2025, which is an expansion for toolReplaceExpansion
   xInput["reg.recover", 2030, ] <- c(26, 10, 20, 5, 5, 0, 34, 0, 0, 0, 0, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # the compensation cut in 2025: primf 38 * 40/48, primn 10 * 40/48
