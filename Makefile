@@ -1,4 +1,4 @@
-.PHONY: help build check test lint lint-all format format-all install docs
+.PHONY: help build check test lint lint-all format format-all install docs plot-harmonized-land plot-harmonized-nonland
 .DEFAULT_GOAL = help
 
 # extracts the help text and formats it nicely
@@ -44,3 +44,9 @@ docs:           ## Generate the package documentation (man/*.Rd files) and
                 ## NAMESPACE via roxygen2::roxygenize(), view the generated
                 ## documentation with `?package::function`.
 	Rscript -e 'roxygen2::roxygenize()'
+
+plot-harmonized-land:     ## Run plotHarmonizedLand(), writing PNGs to the current directory.
+	Rscript -e 'suppressMessages(pkgload::load_all(".")); plotHarmonizedLand()'
+
+plot-harmonized-nonland:  ## Run plotHarmonizedNonLand(), writing PNGs to the current directory.
+	Rscript -e 'suppressMessages(pkgload::load_all(".")); plotHarmonizedNonLand()'
