@@ -181,6 +181,42 @@ test_that("toolHarmonizeAbsoluteChanges protects primary land from compensation 
   expect_true(!any(grepl("replaced primf expansion", run$conditions)))
 })
 
+test_that("toolHarmonizeAbsoluteChanges caps prim recovery after a compensation cut", {
+  xTarget <- new.magpie("reg.recover", years = c(2010, 2020), names = items, fill = 0)
+  for (year in c(2010, 2020)) {
+    xTarget["reg.recover", year, ] <- c(40, 10, 10, 5, 5, 0, 30, 0, 0, 0, 0, 0)
+  }
+
+  xInput <- new.magpie("reg.recover", years = c(2020, 2025, 2030), names = items, fill = 0)
+  xInput["reg.recover", 2020, ] <- c(30, 10, 20, 5, 5, 0, 30, 0, 0, 0, 0, 0)
+  # raw secdf becomes -8 Mha, so the forest group exceeds its target once the
+  # negative is clipped, and since primf/primn are the only remaining area they
+  # are scaled down by 40/48 despite the input primf trend being non-increasing
+  xInput["reg.recover", 2025, ] <- c(28, 10, 2, 0, 5, 0, 55, 0, 0, 0, 0, 0)
+  # raw primf (36 Mha) and primn (10 Mha) stay below their input level of 2020,
+  # but above the cut values of 2025, which is an expansion for toolReplaceExpansion
+  xInput["reg.recover", 2030, ] <- c(26, 10, 20, 5, 5, 0, 34, 0, 0, 0, 0, 0)
+
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  out <- run$value
+
+  # the compensation cut in 2025: primf 38 * 40/48, primn 10 * 40/48
+  expect_equal(as.vector(out["reg.recover", 2025, c("primf", "primn", "secdf", "secdn")]),
+               c(95 / 3, 25 / 3, 0, 0))
+  # the raw recovery in 2030 is capped at the cut values and replaced with
+  # secdf/secdn expansion, even though the input prim trend never expanded
+  expect_equal(as.vector(out["reg.recover", 2030, c("primf", "primn", "secdf", "secdn")]),
+               c(95 / 3, 25 / 3, 10 + 36 - 95 / 3, 5 + 10 - 25 / 3))
+  expect_true(toolMaxExpansion(out["reg.recover", , "primf"]) <= 0)
+  expect_true(toolMaxExpansion(out["reg.recover", , "primn"]) <= 0)
+  expectCondition(run$conditions, "replaced primf expansion")
+  expectCondition(run$conditions, "replaced primn expansion")
+  expect_true(all(out >= 0))
+  expect_equal(as.vector(dimSums(out, dim = 3)), rep(100, 4))
+  # target data before the harmonization year is untouched
+  expect_equal(as.vector(out["reg.recover", 2020, ]), c(40, 10, 10, 5, 5, 0, 30, 0, 0, 0, 0, 0))
+})
+
 test_that("toolHarmonizeAbsoluteChanges scales down excess area and replaces prim expansion", {
   xTarget <- new.magpie("reg.seven", years = c(2010, 2020), names = items, fill = 0)
   for (year in c(2010, 2020)) {
