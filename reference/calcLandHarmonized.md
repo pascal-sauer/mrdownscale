@@ -27,8 +27,8 @@ calcLandHarmonized(input, target, harmonizationPeriod, harmonization)
   Two integer values, before the first given year the target dataset is
   used, after the second given year the input dataset is used, in
   between harmonize between the two datasets. For harmonization =
-  "absoluteChanges" both values must be the same, the harmonization
-  year, which must be present in the target dataset.
+  "absoluteChanges" both values must be set to the same harmonization
+  year, which must match a time step in both datasets.
 
 - harmonization:
 

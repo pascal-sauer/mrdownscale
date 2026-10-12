@@ -40,11 +40,15 @@ Negative values are handled within groups of related categories (forest
 & other land; all cropland types; pasture & rangeland), so that they are
 compensated by the other categories of the group. For crops, negative
 values are first compensated by the corresponding rainfed/irrigated twin
-of the same crop, which keeps that pair's total area, including biofuel
-types like c3ann_rainfed_biofuel_1st_gen. Crop categories without their
-twin are compensated by the whole group. Groups with a negative total
-area are set to zero. Afterwards, if any negatives remain, all
-categories except urban are scaled down to keep the total area constant.
+of the same crop. Crop categories without their twin are compensated by
+the whole group. Groups with a negative total area are set to zero.
+Afterwards, if any negatives remain, all categories except urban are
+scaled down to keep the total area constant.
+
+primf and primn cannot regrow, so if they were scaled down to compensate
+that would persist in all later timesteps (toolReplaceExpansion caps
+prim areas at previous timestep). Hence they are only scaled down once
+all other variables in their group were scaled down to zero first.
 
 ## Author
 

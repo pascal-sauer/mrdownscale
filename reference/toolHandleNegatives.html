@@ -11,7 +11,7 @@ defaults to the category sums of x before zeroing."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">mrdownscale</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.52.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.52.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -49,7 +49,7 @@ defaults to the category sums of x before zeroing.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">toolHandleNegatives</span><span class="op">(</span><span class="va">x</span>, targetArea <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">toolHandleNegatives</span><span class="op">(</span><span class="va">x</span>, targetArea <span class="op">=</span> <span class="cn">NULL</span>, lastScaled <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -64,6 +64,12 @@ defaults to the category sums of x before zeroing.</p>
 <dd><p>optional target area per cell and year, recycled if it has
 fewer years than x, must not be negative</p></dd>
 
+
+<dt id="arg-lastscaled">lastScaled<a class="anchor" aria-label="anchor" href="#arg-lastscaled"></a></dt>
+<dd><p>character vector of category names that are only scaled
+down after all other categories have been scaled down to zero, names not
+present in x are ignored</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -71,7 +77,12 @@ fewer years than x, must not be negative</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Intended to be applied to a group of land cover categories (e.g. forest
+    <p>Categories listed in lastScaled are only scaled down after all other
+categories have been scaled down to zero, so they are protected against
+compensation cuts unless the other categories cannot absorb the excess area
+alone. With the default lastScaled = character(0) all categories are scaled
+down proportionally together.</p>
+<p>Intended to be applied to a group of land cover categories (e.g. forest
 plus other land), so that negative values in one category are compensated
 by the others without changing the total group area.</p>
     </div>
