@@ -47,15 +47,8 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
   xInput <- calcOutput("NonlandInputRecategorized", input = input, target = target, aggregate = FALSE)
   xInput <- xInput[, , "wood_harvest_area"]
 
-  # absoluteChanges only uses the target data up to the harmonization year,
-  # no extrapolation is needed
-  if (harmonization == "absoluteChanges") {
-    xTarget <- calcOutput("NonlandTargetLowRes", input = input, target = target,
-                          endOfHistory = harmonizationPeriod[1], aggregate = FALSE)
-  } else {
-    xTarget <- calcOutput("NonlandTargetExtrapolated", input = input, target = target,
-                          harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
-  }
+  xTarget <- calcOutput("NonlandTargetExtrapolated", input = input, target = target,
+                        harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
   xTarget <- xTarget[, , "wood_harvest_area"]
   harmonizer <- toolGetHarmonizer(harmonization, constantTotal = FALSE)
   rawHarvestHarmonized <- harmonizer(xInput, xTarget, harmonizationPeriod = harmonizationPeriod)

@@ -29,15 +29,8 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   stopifnot(0 < kgCPerMhaInput, kgCPerMhaInput < Inf)
   getItems(kgCPerMhaInput, 3.1) <- sub("bioh$", "kgC_per_Mha", getItems(kgCPerMhaInput, 3.1))
 
-  # absoluteChanges only uses the target data up to the harmonization year,
-  # no extrapolation is needed
-  if (harmonization == "absoluteChanges") {
-    xTarget <- calcOutput("NonlandTargetLowRes", input = input, target = target,
-                          endOfHistory = hp[1], aggregate = FALSE)
-  } else {
-    xTarget <- calcOutput("NonlandTargetExtrapolated", input = input, target = target,
-                          harmonizationPeriod = hp, aggregate = FALSE)
-  }
+  xTarget <- calcOutput("NonlandTargetExtrapolated", input = input, target = target,
+                        harmonizationPeriod = hp, aggregate = FALSE)
 
   kgCPerMhaTarget <- xTarget[, , "bioh"] / collapseDim(xTarget[, , "wood_harvest_area"])
   kgCPerMhaTarget[!is.finite(kgCPerMhaTarget)] <- min(kgCPerMhaTarget[is.finite(kgCPerMhaTarget)])
@@ -45,13 +38,8 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   getItems(kgCPerMhaTarget, 3.1) <- sub("bioh$", "kgC_per_Mha", getItems(kgCPerMhaTarget, 3.1))
 
   harmonizationInput <- mbind(xInput[, , "wood_harvest_area", invert = TRUE], kgCPerMhaInput)
-  if (harmonization == "absoluteChanges") {
-    landTargetMha <- calcOutput("LandTargetLowRes", input = input, target = target,
-                                endOfHistory = hp[1], aggregate = FALSE)
-  } else {
-    landTargetMha <- calcOutput("LandTargetExtrapolated", input = input, target = target,
-                                harmonizationPeriod = hp, aggregate = FALSE)
-  }
+  landTargetMha <- calcOutput("LandTargetExtrapolated", input = input, target = target,
+                              harmonizationPeriod = hp, aggregate = FALSE)
   fertilizerTgTarget <- toolFertilizerTg(xTarget[, , "fertilizer"], landTargetMha)
   harmonizationTarget <- mbind(xTarget[, , c("wood_harvest_area", "fertilizer"), invert = TRUE],
                                kgCPerMhaTarget, fertilizerTgTarget)

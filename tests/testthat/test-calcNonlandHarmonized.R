@@ -43,18 +43,16 @@ test_that("calcNonlandHarmonized works with harmonization = absoluteChanges", {
 
   # temporarily replaces calcOutput in the package namespace, so the internal
   # source data calls return the synthetic data above and anything else errors
+  # for equal harmonization years the Extrapolated targets are the LowRes
+  # targets returned unchanged (see test-calcNonlandTargetExtrapolated.R)
   local_mocked_bindings(
     calcOutput = function(name, ...) {
       switch(name,
              NonlandInputRecategorized = xInput,
-             NonlandTargetLowRes = xTarget,
-             LandTargetLowRes = landTarget,
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = landTarget,
              LandHarmonized = landHarmonized,
              WoodHarvestAreaHarmonized = harvestArea,
-             # absoluteChanges only uses the target data up to the harmonization
-             # year, so extrapolated targets must never be requested
-             NonlandTargetExtrapolated = stop("\"", name, "\" must not be used for absoluteChanges"),
-             LandTargetExtrapolated = stop("\"", name, "\" must not be used for absoluteChanges"),
              stop("unexpected calcOutput call for \"", name, "\""))
     }
   )
@@ -124,8 +122,8 @@ test_that("toolCheckFertilizer also runs for absoluteChanges", {
     calcOutput = function(name, ...) {
       switch(name,
              NonlandInputRecategorized = xInput,
-             NonlandTargetLowRes = xTarget,
-             LandTargetLowRes = land[, c(2010, 2020), ],
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = land[, c(2010, 2020), ],
              LandHarmonized = land,
              WoodHarvestAreaHarmonized = harvestArea,
              stop("unexpected calcOutput call for \"", name, "\""))

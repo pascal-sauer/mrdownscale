@@ -28,15 +28,8 @@ calcLandHarmonized <- function(input, target, harmonizationPeriod, harmonization
   geometry <- attr(xInput, "geometry")
   crs <- attr(xInput, "crs")
 
-  # absoluteChanges only uses the target data up to the harmonization year,
-  # no extrapolation is needed
-  if (harmonization == "absoluteChanges") {
-    xTarget <- calcOutput("LandTargetLowRes", input = input, target = target,
-                          endOfHistory = harmonizationPeriod[1], aggregate = FALSE)
-  } else {
-    xTarget <- calcOutput("LandTargetExtrapolated", input = input, target = target,
-                          harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
-  }
+  xTarget <- calcOutput("LandTargetExtrapolated", input = input, target = target,
+                        harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
 
   # checks and corrections
   inSum <- dimSums(xInput, dim = 3)
