@@ -106,7 +106,7 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, c
     out <- toolReplaceExpansion(out, "primf", "secdf")
     out <- toolReplaceExpansion(out, "primn", "secdn")
 
-    toolReportAreaDeviation(raw, out, groups = groups)
+    toolReportDeviation(raw, out, groups = groups, unit = "Mha")
 
     stopifnot(all(abs(dimSums(out, 3) - targetArea) < 10^-5))
   } else {
@@ -114,6 +114,8 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, c
     # raw absolute changes to the target data and just clamp negatives to zero
     out <- mbind(xTarget[, targetYears <= hy, ], raw)
     out[out < 0] <- 0
+    # the nonland item set mixes units, so report per category prefix instead
+    toolReportDeviation(raw, out, groups = split(getItems(raw, 3), sub("\\..*$", "", getItems(raw, 3))))
   }
 
   return(out)
