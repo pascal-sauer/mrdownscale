@@ -2,24 +2,6 @@ items <- c("primf", "primn", "secdf", "secdn", "urban", "pltns",
            "pastr", "range", "c3ann_rainfed", "c3ann_irrigated",
            "c4ann_rainfed", "c4ann_irrigated")
 
-# runs the expression and returns its value together with all messages and
-# warnings emitted by toolStatusMessage (which uses warnings for "warn" status)
-captureConditions <- function(expr) {
-  conditions <- character()
-  value <- withCallingHandlers(
-    expr,
-    message = function(m) {
-      conditions <<- unique(c(conditions, conditionMessage(m)))
-      invokeRestart("muffleMessage")
-    },
-    warning = function(w) {
-      conditions <<- unique(c(conditions, conditionMessage(w)))
-      invokeRestart("muffleWarning")
-    }
-  )
-  return(list(value = value, conditions = conditions))
-}
-
 expectCondition <- function(conditions, regexp) {
   expect_true(any(grepl(regexp, conditions)))
 }
@@ -348,11 +330,10 @@ test_that("toolHarmonizeAbsoluteChanges works with nonland data", {
   xInput["reg.two", 2025, ] <- c(6, 12)
   xInput["reg.two", 2030, ] <- c(5, 8)
 
-  expect_no_error(
-    out <- suppressWarnings(suppressMessages(
-      toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020), constantTotal = FALSE)
-    ))
+  run <- captureConditions(
+    toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020), constantTotal = FALSE)
   )
+  out <- run$value
   expect_equal(getYears(out, as.integer = TRUE), c(2010, 2020, 2025, 2030))
 
   # until the harmonization year the target is used unchanged
@@ -367,6 +348,30 @@ test_that("toolHarmonizeAbsoluteChanges works with nonland data", {
   expect_equal(as.vector(out["reg.two", 2030, ]), c(9, 5))
 
   expect_true(all(out >= 0))
+
+  # the clamping added +1 and +4 to bioh.animal, reported per category prefix group,
+  # as mean 2.5 per timestep over the accumulated bioh.animal output of 14
+  biohGroup <- gsub("[[:space:]]", "", grep("group \"bioh\"", run$conditions, value = TRUE))
+  expect_length(biohGroup, 1)
+  expect_match(biohGroup, "bioh\\.animal,35\\.7,35\\.7,0,2\\.5,2\\.5,0")
+  expect_match(biohGroup, "total,7\\.35,7\\.35,0,2\\.5,2\\.5,0")
+})
+
+test_that("toolHarmonizeAbsoluteChanges does not report for nonland data without clamping", {
+  nonlandItems <- c("bioh.indu", "bioh.animal")
+  xTarget <- new.magpie("reg.one", years = c(2010, 2020), names = nonlandItems, fill = 0)
+  xTarget["reg.one", 2020, ] <- c(10, 2)
+
+  xInput <- new.magpie("reg.one", years = c(2020, 2025), names = nonlandItems, fill = 0)
+  xInput["reg.one", 2020, ] <- c(20, 6)
+  # all raw values stay positive, so nothing is clamped
+  xInput["reg.one", 2025, ] <- c(25, 7)
+
+  run <- captureConditions(
+    toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020), constantTotal = FALSE)
+  )
+  expect_equal(as.vector(run$value["reg.one", 2025, ]), c(15, 3))
+  expect_length(grep("group", run$conditions), 0)
 })
 
 test_that("toolHarmonizeAbsoluteChanges rejects constant total area data with unknown categories", {
