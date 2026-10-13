@@ -8,7 +8,10 @@
 #' harmonizing it. This is then multiplied by the harmonized wood harvest area
 #' and scaled so the total harmonized bioh is reached.
 #' Harmonize absolute fertilizer in Tg yr-1, then convert to fertilizer rate
-#' in kg ha-1 yr-1.
+#' in kg ha-1 yr-1. The rates are rescaled per crop category and year so that
+#' the global fertilizer totals from the harmonization year on keep a constant
+#' offset to the input (parallel year-to-year changes), redistributing amounts
+#' lost where zero clamping or missing cropland removed fertilizer.
 #'
 #' @inheritParams calcNonlandInput
 #' @param target name of the target dataset
@@ -51,12 +54,29 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
                                   harmonizationPeriod = hp,
                                   harmonization = harmonization, aggregate = FALSE)
   out[, , "fertilizer"] <- toolFertilizerKgPerHa(out[, , "fertilizer"], landHarmonizedMha)
+
+  yearsAfterHy <- getYears(out, as.integer = TRUE)[getYears(out, as.integer = TRUE) > hp[1]]
+
   if (harmonization == "absoluteChanges") {
+    inputGlobal <- dimSums(xInput[, c(hp[1], yearsAfterHy), "fertilizer"], 1)
+    expectedGlobalTg <- setYears(dimSums(fertilizerTgTarget[, hp[1], ], 1), NULL) +
+      (inputGlobal[, yearsAfterHy, ] - setYears(inputGlobal[, hp[1], ], NULL))
+    expectedGlobalTg[expectedGlobalTg < 0] <- 0
+
     # where the zero clamping of the harmonizer removed all cropland of a cell,
     # the fertilizer rate is undefined, so set it to zero like toolFertilizerKgPerHa
     # does for cells without fertilizer
     fertilizer <- out[, , "fertilizer"]
     fertilizer[fertilizer == Inf] <- 0
+
+    # zero clamping and the Inf -> 0 replacement break the parallelism of the raw
+    # absolute changes, rescale the rates per crop category and year so that the
+    # global totals equal target total + input delta again, which redistributes
+    # fertilizer lost in cells without cropland to the cells that still have some
+    actualGlobalTg <- dimSums(toolFertilizerTg(fertilizer[, yearsAfterHy, ], landHarmonizedMha), 1)
+    factor <- expectedGlobalTg / actualGlobalTg
+    factor[actualGlobalTg == 0] <- 1
+    fertilizer[, yearsAfterHy, ] <- fertilizer[, yearsAfterHy, ] * factor
     out[, , "fertilizer"] <- fertilizer
   }
 
@@ -109,11 +129,16 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
                      xTarget[, getYears(xTarget, as.integer = TRUE) <= hp[1], ],
                      10^-4, "Returning reference data before harmonization period")
 
-  # for years after harmonization make sure that total global fertilizer applied matches input
-  # absoluteChanges intentionally deviates from the input data after the
-  # harmonization period (target in harmonization year plus input deltas),
-  # so input match check does not apply there
-  if (harmonization != "absoluteChanges") {
+  # for years after harmonization make sure the global fertilizer totals match
+  # the input, except for absoluteChanges, which deviates from the input by
+  # design (target in the harmonization year plus input deltas): there the
+  # global totals per crop category must instead stay parallel to the input,
+  # the deviation from the input remains as a constant offset
+  if (harmonization == "absoluteChanges") {
+    fertilizerOutput <- dimSums(toolFertilizerTg(out[, yearsAfterHy, "fertilizer"], landHarmonizedMha), 1)
+    toolExpectLessDiff(fertilizerOutput, expectedGlobalTg, 10^-5,
+                       "Global fertilizer totals are parallel to input after the harmonization year")
+  } else {
     years <- getYears(out, TRUE)[getYears(out, TRUE) >= hp[2]]
     fertilizerInput <- nonlandInput[, years, "fertilizer"]
     fertilizerOutput <- toolFertilizerTg(out[, years, "fertilizer"], landHarmonizedMha[, years, ])
