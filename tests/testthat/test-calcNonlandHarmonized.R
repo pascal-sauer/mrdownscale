@@ -154,3 +154,198 @@ test_that("toolCheckFertilizer also runs for absoluteChanges", {
     "Fertilizer application"
   )
 })
+
+test_that("absoluteChanges projects input deltas onto the harmonized land", {
+  # regone.1 keeps its input fertilizer growth in MAgPIE while its harmonized
+  # cropland collapses after 2020, the region's other cell expands: under
+  # absoluteChanges the regional tonnage delta must follow the harmonized land,
+  # so the collapsing cell keeps only its target anchor plus its tiny area
+  # share, and no fertilizer ends up on land that vanished. The tonnages are
+  # scaled so the cap below does not interfere with the projection.
+  cells <- c("regone.1", "regone.2", "regtwo.1")
+
+  xInput <- new.magpie(cells, years = c(2020, 2025), names = nonlandItems, fill = 0)
+  xInput[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xInput[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xInput[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xInput["regone.1", , "fertilizer.c3ann"] <- c(10, 14)
+  xInput["regone.2", , "fertilizer.c3ann"] <- c(1, 1)
+  xInput["regtwo.1", , "fertilizer.c3ann"] <- c(1, 1)
+  attr(xInput, "geometry") <- "point"
+  attr(xInput, "crs") <- "EPSG:4326"
+  getSets(xInput) <- c("region", "id", "year", "category", "data")
+
+  # target cropland of 0.01, 20 and 10 Mha anchors the target rate of
+  # 100 kg ha-1 yr-1 at 0.001, 2 and 1 Tg
+  xTarget <- new.magpie(cells, years = c(2010, 2020), names = nonlandItems, fill = 0)
+  xTarget[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xTarget[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xTarget[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xTarget[, , "fertilizer.c3ann"] <- 100
+  getSets(xTarget) <- c("region", "id", "year", "category", "data")
+
+  landTarget <- new.magpie(cells, years = c(2010, 2020), names = "c3ann", fill = 10)
+  landTarget["regone.1", , ] <- 0.01
+  landTarget["regone.2", , ] <- 20
+  landHarmonized <- new.magpie(cells, years = c(2010, 2020, 2025), names = "c3ann", fill = 10)
+  landHarmonized["regone.1", , ] <- 0.01
+  landHarmonized["regone.2", , ] <- 20
+  landHarmonized["regone.1", 2025, ] <- 0.003
+
+  harvestArea <- new.magpie(cells, years = c(2010, 2020, 2025),
+                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf"), fill = 1)
+  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = landTarget,
+             LandHarmonized = landHarmonized,
+             WoodHarvestAreaHarmonized = harvestArea,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+
+  conditions <- captureConditions(
+    result <- calcNonlandHarmonized(input = "magpie", target = "luh3",
+                                    harmonizationPeriod = c(2020, 2020),
+                                    harmonization = "absoluteChanges")
+  )
+  expect_false(any(grepl("Check failed", conditions$conditions)))
+  x <- result$x
+
+  # the +4 Tg regional delta is distributed proportional to the 2025 harmonized
+  # areas of the region (0.003 and 20 Mha), the cell in the region without any
+  # delta keeps its anchor rate
+  expect_equal(as.vector(x["regone.1", 2025, "fertilizer"]),
+               (0.001 + 4 * (0.003 / 20.003)) / 0.003 * (10^9 / 10^6), tolerance = 10^-9)
+  expect_equal(as.vector(x["regone.2", 2025, "fertilizer"]),
+               (2 + 4 * (20 / 20.003)) / 20 * (10^9 / 10^6), tolerance = 10^-9)
+  expect_equal(as.vector(x["regtwo.1", 2025, "fertilizer"]), 100)
+  expect_true(max(x[, 2025, "fertilizer"]) <= 1200)
+
+  # the projection preserves the regional tonnage sums: target plus regional
+  # input delta, also globally (which keeps the parallelism check exact)
+  regionTg <- dimSums(toolFertilizerTg(x[, 2025, "fertilizer"], landHarmonized), 1.2)
+  expect_equal(as.vector(regionTg["regone", , ]), 2.001 + 4)
+  expect_equal(as.vector(regionTg["regtwo", , ]), 1)
+  expect_equal(as.vector(dimSums(toolFertilizerTg(x[, 2025, "fertilizer"], landHarmonized), c(1, 2))), 3.001 + 4)
+
+  # before and in the harmonization year the target is still reproduced exactly
+  expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
+})
+
+test_that("the residual cap pulls collapsed-area cells with anchor tonnage back to 1200", {
+  # with a zero regional delta the collapsing cell regone.1 keeps its anchor of
+  # 10 Tg on 1e-5 Mha of harmonized cropland, a rate of 1e9 kg ha-1 yr-1: the
+  # cap must pull it back to the threshold and redistribute its excess to the
+  # headroom of its region partner, leaving the other region untouched
+  cells <- c("regone.1", "regone.2", "regtwo.1")
+
+  xInput <- new.magpie(cells, years = c(2020, 2025), names = nonlandItems, fill = 0)
+  xInput[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xInput[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xInput[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xInput["regone.1", , "fertilizer.c3ann"] <- c(10, 10)
+  xInput["regone.2", , "fertilizer.c3ann"] <- c(10, 10)
+  xInput["regtwo.1", , "fertilizer.c3ann"] <- c(1, 1)
+  attr(xInput, "geometry") <- "point"
+  attr(xInput, "crs") <- "EPSG:4326"
+  getSets(xInput) <- c("region", "id", "year", "category", "data")
+
+  xTarget <- new.magpie(cells, years = c(2010, 2020), names = nonlandItems, fill = 0)
+  xTarget[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xTarget[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xTarget[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xTarget["regone.1", , "fertilizer.c3ann"] <- 1000
+  xTarget["regone.2", , "fertilizer.c3ann"] <- 100
+  xTarget["regtwo.1", , "fertilizer.c3ann"] <- 10
+  getSets(xTarget) <- c("region", "id", "year", "category", "data")
+
+  # anchors: 10 Tg in regone.1 (1000 kg ha-1 on 10 Mha) and regone.2
+  # (100 kg ha-1 on 100 Mha), 1 Tg in regtwo
+  landTarget <- new.magpie(cells, years = c(2010, 2020), names = "c3ann", fill = 100)
+  landTarget["regone.1", , ] <- 10
+  landHarmonized <- new.magpie(cells, years = c(2010, 2020, 2025), names = "c3ann", fill = 100)
+  landHarmonized["regone.1", c(2010, 2020), ] <- 10
+  landHarmonized["regone.1", 2025, ] <- 10^-5
+
+  harvestArea <- new.magpie(cells, years = c(2010, 2020, 2025),
+                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf"), fill = 1)
+  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = landTarget,
+             LandHarmonized = landHarmonized,
+             WoodHarvestAreaHarmonized = harvestArea,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+
+  conditions <- captureConditions(
+    result <- calcNonlandHarmonized(input = "magpie", target = "luh3",
+                                    harmonizationPeriod = c(2020, 2020),
+                                    harmonization = "absoluteChanges")
+  )
+  expect_false(any(grepl("Check failed", conditions$conditions)))
+  x <- result$x
+
+  capTg <- 1200 * 10^-5 * 10^-3
+  # the collapsed cell lands exactly on the cap instead of reaching 1e9
+  expect_equal(as.vector(x["regone.1", 2025, "fertilizer"]), 1200)
+  # its excess of almost 10 Tg is absorbed by its region partner
+  expect_equal(as.vector(x["regone.2", 2025, "fertilizer"]),
+               (10 + (10 - capTg)) / 100 * (10^9 / 10^6))
+  # the partner in the other region is untouched
+  expect_equal(as.vector(x["regtwo.1", 2025, "fertilizer"]), 10)
+  expect_true(max(x[, , "fertilizer"]) <= 1200)
+
+  # tonnage and global totals stay intact and parallel to the (flat) input
+  expect_equal(as.vector(dimSums(toolFertilizerTg(x[, 2025, "fertilizer"], landHarmonized), c(1, 2))), 21)
+  expect_equal(as.vector(x["regone.1", 2020, "fertilizer"]), 1000)
+})
+
+test_that("toolCapFertilizerKgPerHa redistributes within the region", {
+  fert <- new.magpie(c("regone.1", "regone.2", "regtwo.1"), years = 2025,
+                     names = "fertilizer.c3ann", fill = 0)
+  fert["regone.1", , ] <- 1500
+  fert["regone.2", , ] <- 100
+  fert["regtwo.1", , ] <- 10
+  getSets(fert) <- c("region", "id", "year", "category", "data")
+  land <- new.magpie(c("regone.1", "regone.2", "regtwo.1"), years = 2025, names = "c3ann", fill = 100)
+
+  capped <- toolCapFertilizerKgPerHa(fert, land)
+
+  # regone's 30 Tg excess fits into the 110 Tg headroom of its own region
+  # (cap 120 Tg per cell), so regtwo stays untouched
+  expect_equal(as.vector(capped["regone.1", , ]), 1200)
+  expect_equal(as.vector(capped["regone.2", , ]), 400)
+  expect_equal(as.vector(capped["regtwo.1", , ]), 10)
+  expect_equal(as.vector(dimSums(toolFertilizerTg(capped, land), c(1, 2))), 150 + 10 + 1)
+})
+
+test_that("toolCapFertilizerKgPerHa falls back to the global pool and skips infeasible cases", {
+  fert <- new.magpie(c("regone.1", "regtwo.1"), years = 2025, names = "fertilizer.c3ann", fill = 0)
+  fert["regone.1", , ] <- 1500
+  fert["regtwo.1", , ] <- 100
+  getSets(fert) <- c("region", "id", "year", "category", "data")
+  land <- new.magpie(c("regone.1", "regtwo.1"), years = 2025, names = "c3ann", fill = 100)
+
+  # regone has no headroom of its own, the pass runs over the global pool:
+  # its 30 Tg excess fits into regtwo's 110 Tg spare
+  capped <- toolCapFertilizerKgPerHa(fert, land)
+  expect_equal(as.vector(capped["regone.1", , ]), 1200)
+  expect_equal(as.vector(capped["regtwo.1", , ]), 400)
+
+  # if not even the global pool has enough headroom, tonnage loss would be
+  # unavoidable, so the input is returned unchanged for toolCheckFertilizer to
+  # report
+  land["regtwo.1", , ] <- 10
+  expect_equal(as.vector(toolCapFertilizerKgPerHa(fert, land)), as.vector(fert))
+})
