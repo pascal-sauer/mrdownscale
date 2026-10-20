@@ -6,7 +6,10 @@
 #' Wood harvest biomass (bioh) is adapted to the harmonized wood harvest area
 #' by calculating kg C per mega hectare for input and target data and
 #' harmonizing it. This is then multiplied by the harmonized wood harvest area
-#' and scaled so the total harmonized bioh is reached.
+#' and scaled so the total harmonized bioh is reached. bioh of clusters
+#' whose harmonized harvest area is zero is redistributed to clusters with
+#' harvest area in the same region, falling back to the global pool
+#' (toolRedistributeBioh).
 #' Harmonize absolute fertilizer in Tg yr-1, then convert to fertilizer rate
 #' in kg ha-1 yr-1. For absoluteChanges the tonnage changes of the input since
 #' the harmonization year are applied regionally, projected onto the harmonized
@@ -130,6 +133,9 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   biohCalculated <- kgCPerMhaHarmonized * collapseDim(harvestArea)
   getItems(biohCalculated, 3.1) <- sub("kgC_per_Mha$", "bioh", getItems(biohCalculated, 3.1))
   stopifnot(0 <= biohCalculated, biohCalculated < Inf)
+
+  # redistribute bioh from clusters without harvest area
+  out[, , "bioh"] <- toolRedistributeBioh(out[, , "bioh"], biohCalculated)
 
   biohNormalization <- dimSums(out[, , "bioh"], 3) / dimSums(biohCalculated, 3)
   biohNormalization[is.nan(biohNormalization)] <- 0
