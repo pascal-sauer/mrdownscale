@@ -110,8 +110,7 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, c
 
     stopifnot(all(abs(dimSums(out, 3) - targetArea) < 10^-5))
   } else {
-    # without a constant total area there is nothing to keep constant, apply the
-    # raw absolute changes to the target data and just clamp negatives to zero
+    # no total to keep constant: apply the raw absolute changes and clamp negatives to zero
     out <- mbind(xTarget[, targetYears <= hy, ], raw)
     out[out < 0] <- 0
     # the nonland item set mixes units, so report per category prefix instead

@@ -84,9 +84,7 @@ calcNonlandHighRes <- function(input, target, harmonizationPeriod, yearsSubset, 
                      "No significant global sum difference per category before and after downscaling")
 
   # for years after harmonization make sure that total global fertilizer matches input
-  # absoluteChanges intentionally deviates from the input data after the
-  # harmonization period (target in harmonization year plus input deltas),
-  # so this input match check does not apply there
+  # not applicable for absoluteChanges, which deviates from the input by design
   if (harmonization != "absoluteChanges") {
     years <- getYears(out, TRUE)
     years <- years[years >= hp[2]]
