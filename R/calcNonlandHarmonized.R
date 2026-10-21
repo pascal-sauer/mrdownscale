@@ -11,11 +11,14 @@
 #' in kg ha-1 yr-1. For absoluteChanges the tonnage changes of the input since
 #' the harmonization year are applied regionally, projected onto the harmonized
 #' crop group areas (toolProjectFertilizerTg). The rates are then rescaled per
-#' crop category and year so that the global fertilizer totals from the
-#' harmonization year on keep a constant offset to the input (parallel
+#' region, crop category and year so that each region's fertilizer total from
+#' the harmonization year on keeps a constant offset to its own input (parallel
 #' year-to-year changes), redistributing amounts lost where zero clamping or
-#' missing cropland removed fertilizer, and finally capped at the plausibility
-#' threshold (toolCapFertilizerKgPerHa).
+#' missing cropland removed fertilizer to the other cells of the same region,
+#' falling back to the global factor exactly in those crop group and year
+#' tables where a region lost all its cropland and can no longer hold its
+#' tonnes, and finally capped at the plausibility threshold
+#' (toolCapFertilizerKgPerHa).
 #'
 #' @inheritParams calcNonlandInput
 #' @param target name of the target dataset
@@ -73,19 +76,37 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   out[, , "fertilizer"] <- toolFertilizerKgPerHa(out[, , "fertilizer"], landHarmonizedMha)
 
   if (harmonization == "absoluteChanges") {
-    inputGlobal <- dimSums(fertilizerTgInput, 1)
-    expectedGlobalTg <- setYears(dimSums(fertilizerTgTarget[, hp[1], ], 1), NULL) +
-      (inputGlobal[, yearsAfterHy, ] - setYears(inputGlobal[, hp[1], ], NULL))
-    expectedGlobalTg[expectedGlobalTg < 0] <- 0
+    regionTgInput <- dimSums(fertilizerTgInput, 1.2)
+    expectedRegionTg <- setYears(dimSums(fertilizerTgTarget[, hp[1], ], 1.2), NULL) +
+      (regionTgInput[, yearsAfterHy, ] - setYears(regionTgInput[, hp[1], ], NULL))
+    expectedRegionTg[expectedRegionTg < 0] <- 0
+    # the global check below stays exact: it compares against the regional
+    # expectations summed up
+    expectedGlobalTg <- dimSums(expectedRegionTg, 1)
 
     # Inf rates where clamping removed all cropland become 0, as done by toolFertilizerKgPerHa
     fertilizer <- out[, , "fertilizer"]
     fertilizer[fertilizer == Inf] <- 0
 
-    # rescale rates per crop and year so global totals stay parallel to the input despite clamping
-    actualGlobalTg <- dimSums(toolFertilizerTg(fertilizer[, yearsAfterHy, ], landHarmonizedMha), 1)
-    factor <- expectedGlobalTg / actualGlobalTg
-    factor[actualGlobalTg == 0] <- 1
+    # zero clamping and the Inf -> 0 replacement broke the parallelism, rescale per
+    # region, crop category and year to restore each region's expected tonnage
+    actualRegionTg <- dimSums(toolFertilizerTg(fertilizer[, yearsAfterHy, ], landHarmonizedMha), 1.2)
+    factor <- expectedRegionTg / actualRegionTg
+    factor[actualRegionTg == 0] <- 1
+    # unholdable tonnes: expected > 0 where the region lost all cropland of the
+    # crop group (actual == 0), zero elsewhere, summed up per crop and year
+    unholdableTg <- dimSums(expectedRegionTg * (actualRegionTg == 0), 1)
+    if (!toolExpectTrue(sum(unholdableTg[]) == 0,
+                        "Regions with expected fertilizer tonnage have cropland left to hold it",
+                        falseStatus = "warn")) {
+      # a region that lost all cropland can never hold its tonnes, so exactly the
+      # affected crop group and year tables fall back to the global factor
+      actualGlobalTg <- dimSums(actualRegionTg, 1)
+      factorGlobal <- expectedGlobalTg / actualGlobalTg
+      factorGlobal[actualGlobalTg == 0] <- 1
+      fallback <- unholdableTg > 0
+      factor <- factor * (fallback != TRUE) + factorGlobal * fallback
+    }
     fertilizer[, yearsAfterHy, ] <- fertilizer[, yearsAfterHy, ] * factor
 
     # cap the rates at the plausibility threshold of toolCheckFertilizer, which
@@ -146,6 +167,9 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
 
   # absoluteChanges must stay parallel to the input (constant offset) instead of matching it
   if (harmonization == "absoluteChanges") {
+    toolExpectLessDiff(dimSums(toolFertilizerTg(out[, yearsAfterHy, "fertilizer"], landHarmonizedMha), 1.2),
+                       expectedRegionTg, 10^-5,
+                       "Regional fertilizer totals are parallel to input after the harmonization year")
     fertilizerOutput <- dimSums(toolFertilizerTg(out[, yearsAfterHy, "fertilizer"], landHarmonizedMha), 1)
     toolExpectLessDiff(fertilizerOutput, expectedGlobalTg, 10^-5,
                        "Global fertilizer totals are parallel to input after the harmonization year")

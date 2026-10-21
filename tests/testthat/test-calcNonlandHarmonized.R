@@ -311,6 +311,214 @@ test_that("the residual cap pulls collapsed-area cells with anchor tonnage back 
   expect_equal(as.vector(x["regone.1", 2020, "fertilizer"]), 1000)
 })
 
+test_that("absoluteChanges compensates lost fertilizer tonnage within the same region", {
+  # regone.2 loses all its cropland in 2025, so its 10 Tg anchor is lost and
+  # must be compensated by its own region: expected total 20 + 50 = 70 Tg over
+  # an actual 60 Tg gives factor 7/6 -> 700 kg ha-1 yr-1 on the remaining cell,
+  # while regtwo, which lost nothing, keeps its anchor rate of 100 untouched
+  # (a global factor would inflate it to 114.29)
+  cells <- c("regone.1", "regone.2", "regtwo.1")
+
+  xInput <- new.magpie(cells, years = c(2020, 2025), names = nonlandItems, fill = 0)
+  xInput[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xInput[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xInput[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xInput["regone.1", , "fertilizer.c3ann"] <- c(100, 100)
+  xInput["regone.2", , "fertilizer.c3ann"] <- c(100, 150)
+  xInput["regtwo.1", , "fertilizer.c3ann"] <- c(10, 10)
+  attr(xInput, "geometry") <- "point"
+  attr(xInput, "crs") <- "EPSG:4326"
+  getSets(xInput) <- c("region", "id", "year", "category", "data")
+
+  # target rate of 100 kg ha-1 yr-1 on 100 Mha anchors 10 Tg per cell
+  xTarget <- new.magpie(cells, years = c(2010, 2020), names = nonlandItems, fill = 0)
+  xTarget[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xTarget[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xTarget[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xTarget[, , "fertilizer.c3ann"] <- 100
+  getSets(xTarget) <- c("region", "id", "year", "category", "data")
+
+  landTarget <- new.magpie(cells, years = c(2010, 2020), names = "c3ann", fill = 100)
+  landHarmonized <- new.magpie(cells, years = c(2010, 2020, 2025), names = "c3ann", fill = 100)
+  landHarmonized["regone.2", 2025, ] <- 0
+
+  harvestArea <- new.magpie(cells, years = c(2010, 2020, 2025),
+                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf"), fill = 1)
+  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = landTarget,
+             LandHarmonized = landHarmonized,
+             WoodHarvestAreaHarmonized = harvestArea,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+
+  conditions <- captureConditions(
+    result <- calcNonlandHarmonized(input = "magpie", target = "luh3",
+                                    harmonizationPeriod = c(2020, 2020),
+                                    harmonization = "absoluteChanges")
+  )
+  expect_false(any(grepl("Check failed", conditions$conditions)))
+  x <- result$x
+
+  # the lost 10 Tg are compensated by regone's own remaining cell, regtwo is
+  # left at its anchor rate, the rates stay far below the 1200 cap
+  expect_equal(as.vector(x["regone.1", 2025, "fertilizer"]), 700)
+  expect_equal(as.vector(x["regone.2", 2025, "fertilizer"]), 0)
+  expect_equal(as.vector(x["regtwo.1", 2025, "fertilizer"]), 100)
+
+  # each region's total equals its target total plus its own input delta
+  regionTg <- dimSums(toolFertilizerTg(x[, 2025, "fertilizer"], landHarmonized), 1.2)
+  expect_equal(as.vector(regionTg["regone", , ]), 20 + 50)
+  expect_equal(as.vector(regionTg["regtwo", , ]), 10)
+
+  # before and in the harmonization year the target is still reproduced exactly
+  expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
+})
+
+test_that("absoluteChanges falls back to a global factor if a region lost all its cropland", {
+  # regone expects its 10 Tg anchor in 2025 but lost all its cropland, so no
+  # cell of the region can hold it: the compensation falls back to one global
+  # factor, regone's warn check fires, the per-region check fails by design
+  # while the global parallelism check stays green
+  cells <- c("regone.1", "regtwo.1")
+
+  xInput <- new.magpie(cells, years = c(2020, 2025), names = nonlandItems, fill = 0)
+  xInput[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xInput[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xInput[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xInput["regone.1", , "fertilizer.c3ann"] <- c(100, 100)
+  xInput["regtwo.1", , "fertilizer.c3ann"] <- c(10, 10)
+  attr(xInput, "geometry") <- "point"
+  attr(xInput, "crs") <- "EPSG:4326"
+  getSets(xInput) <- c("region", "id", "year", "category", "data")
+
+  xTarget <- new.magpie(cells, years = c(2010, 2020), names = nonlandItems, fill = 0)
+  xTarget[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xTarget[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xTarget[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xTarget[, , "fertilizer.c3ann"] <- 100
+  getSets(xTarget) <- c("region", "id", "year", "category", "data")
+
+  landTarget <- new.magpie(cells, years = c(2010, 2020), names = "c3ann", fill = 100)
+  landHarmonized <- new.magpie(cells, years = c(2010, 2020, 2025), names = "c3ann", fill = 100)
+  landHarmonized["regone.1", 2025, ] <- 0
+
+  harvestArea <- new.magpie(cells, years = c(2010, 2020, 2025),
+                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf"), fill = 1)
+  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = landTarget,
+             LandHarmonized = landHarmonized,
+             WoodHarvestAreaHarmonized = harvestArea,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+
+  conditions <- captureConditions(
+    result <- calcNonlandHarmonized(input = "magpie", target = "luh3",
+                                    harmonizationPeriod = c(2020, 2020),
+                                    harmonization = "absoluteChanges")
+  )
+  # the warn check reports the unachievable region, the new per-region check
+  # fails by design here, the global one stays green
+  expect_true(any(grepl("Check failed.*cropland left to hold it", conditions$conditions)))
+  expect_true(any(grepl("Check failed.*Regional fertilizer totals are parallel", conditions$conditions)))
+  expect_false(any(grepl("Check failed.*Global fertilizer totals are parallel", conditions$conditions)))
+  x <- result$x
+
+  # the global factor 20/10 doubles regtwo's rate, regone holds nothing
+  expect_equal(as.vector(x["regone.1", 2025, "fertilizer"]), 0)
+  expect_equal(as.vector(x["regtwo.1", 2025, "fertilizer"]), 200)
+})
+
+test_that("the global fallback is scoped to the offending crop group and year table", {
+  # regtwo lost all c3ann cropland while still expecting its 10 Tg anchor, so
+  # the c3ann 2025 table falls back to the global factor (30/10 -> regone.1 at
+  # 300), but the c4ann table has no such unholdable region: regone lost its
+  # regone.2 anchor to zero area and must be compensated by its own region
+  # alone (20/10 -> 200), leaving regtwo's c4ann rate at its 100 anchor
+  # (a global fallback for every table would give 150/150)
+  cells <- c("regone.1", "regone.2", "regtwo.1")
+  items <- c(nonlandItems, "fertilizer.c4ann")
+
+  xInput <- new.magpie(cells, years = c(2020, 2025), names = items, fill = 0)
+  xInput[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xInput[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xInput[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xInput["regone.1", , c("fertilizer.c3ann", "fertilizer.c4ann")] <- 100
+  xInput["regone.2", , c("fertilizer.c3ann", "fertilizer.c4ann")] <- 100
+  xInput["regtwo.1", , c("fertilizer.c3ann", "fertilizer.c4ann")] <- 100
+  attr(xInput, "geometry") <- "point"
+  attr(xInput, "crs") <- "EPSG:4326"
+  getSets(xInput) <- c("region", "id", "year", "category", "data")
+
+  # target rate of 100 kg ha-1 yr-1 on 100 Mha anchors 10 Tg per cell and crop
+  xTarget <- new.magpie(cells, years = c(2010, 2020), names = items, fill = 0)
+  xTarget[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xTarget[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xTarget[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xTarget[, , c("fertilizer.c3ann", "fertilizer.c4ann")] <- 100
+  getSets(xTarget) <- c("region", "id", "year", "category", "data")
+
+  landTarget <- new.magpie(cells, years = c(2010, 2020), names = c("c3ann", "c4ann"), fill = 100)
+  landHarmonized <- new.magpie(cells, years = c(2010, 2020, 2025), names = c("c3ann", "c4ann"), fill = 100)
+  landHarmonized["regone.2", 2025, c("c3ann", "c4ann")] <- 0
+  landHarmonized["regtwo.1", 2025, "c3ann"] <- 0
+
+  harvestArea <- new.magpie(cells, years = c(2010, 2020, 2025),
+                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf"), fill = 1)
+  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = landTarget,
+             LandHarmonized = landHarmonized,
+             WoodHarvestAreaHarmonized = harvestArea,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+
+  conditions <- captureConditions(
+    result <- calcNonlandHarmonized(input = "magpie", target = "luh3",
+                                    harmonizationPeriod = c(2020, 2020),
+                                    harmonization = "absoluteChanges")
+  )
+  # the warn fires for regtwo's unholdable c3ann tonnes, the per-region check
+  # fails only for the c3ann 2025 table, the global one stays green
+  expect_true(any(grepl("Check failed.*cropland left to hold it", conditions$conditions)))
+  expect_true(any(grepl("Check failed.*Regional fertilizer totals are parallel", conditions$conditions)))
+  expect_false(any(grepl("Check failed.*Global fertilizer totals are parallel", conditions$conditions)))
+  x <- result$x
+
+  expect_equal(as.vector(x["regone.1", 2025, "fertilizer.c3ann"]), 300)
+  expect_equal(as.vector(x["regtwo.1", 2025, "fertilizer.c3ann"]), 0)
+  expect_equal(as.vector(x["regone.1", 2025, "fertilizer.c4ann"]), 200)
+  expect_equal(as.vector(x["regone.2", 2025, "fertilizer.c4ann"]), 0)
+  expect_equal(as.vector(x["regtwo.1", 2025, "fertilizer.c4ann"]), 100)
+
+  # the c4ann regional totals stay exact despite the fallback in c3ann
+  regionTg <- dimSums(toolFertilizerTg(x[, 2025, "fertilizer.c4ann"], landHarmonized), 1.2)
+  expect_equal(as.vector(regionTg["regone", , ]), 20)
+  expect_equal(as.vector(regionTg["regtwo", , ]), 10)
+
+  # before and in the harmonization year the target is still reproduced exactly
+  expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
+})
+
 test_that("toolCapFertilizerKgPerHa redistributes within the region", {
   fert <- new.magpie(c("regone.1", "regone.2", "regtwo.1"), years = 2025,
                      names = "fertilizer.c3ann", fill = 0)
