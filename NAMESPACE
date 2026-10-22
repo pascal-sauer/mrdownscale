@@ -2,8 +2,6 @@
 
 export(downscaleRun)
 export(downscaleRunESM)
-export(plotHarmonizedLand)
-export(plotHarmonizedNonLand)
 export(toolGetSmallerArea)
 export(toolMaxExpansion)
 export(toolReplaceExpansion)
