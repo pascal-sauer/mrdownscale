@@ -67,8 +67,7 @@ plotHarmonizedLand <- function(harmonizations = c("absoluteChanges", "inputUnhar
     groups$other <- other
   }
 
-  # merges irrigated/rainfed into one entry per crop (and per biofuel generation),
-  # shows all 1st gen biofuel crops together (it is zero in the magpie input)
+  # merges irrigated/rainfed into one entry per crop, all 1st gen biofuel crops into one
   croplandGroup <- function(item) {
     item <- sub("_(irrigated|rainfed)(_|$)", "\\2", item)
     sub("^[a-z0-9]+_biofuel_1st_gen$", "biofuel_1st_gen", item)

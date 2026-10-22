@@ -38,9 +38,7 @@ plotHarmonizedNonLand <- function(harmonizations = c("absoluteChanges", "inputUn
 
   xInput <- clean(calcOutput("NonlandInputRecategorized", input = input, target = target, aggregate = FALSE))
 
-  # full harmonization chains, cached
-  # the harmonized land data is needed to convert the harmonized fertilizer
-  # rates in kg ha-1 yr-1 back to Tg yr-1
+  # full harmonization chains; land area needed to convert fertilizer rates back to Tg yr-1
   methods <- list()
   fertilizerTg <- list()
   for (harmonization in harmonizations) {
@@ -55,7 +53,7 @@ plotHarmonizedNonLand <- function(harmonizations = c("absoluteChanges", "inputUn
                                                                     harmonizationPeriod = period,
                                                                     harmonization = harmonization,
                                                                     aggregate = FALSE)))
-      # deliberately uncleaned, it is used as denominator for the fertilizer conversion
+      # uncleaned on purpose: denominator of the fertilizer rate conversion
       landHarmonized <- suppressMessages(calcOutput("LandHarmonized", input = input, target = target,
                                                     harmonizationPeriod = period,
                                                     harmonization = harmonization,
@@ -89,8 +87,7 @@ plotHarmonizedNonLand <- function(harmonizations = c("absoluteChanges", "inputUn
     fertilizer = list(scale = 1, ylab = "fertilizer [Tg yr-1]")
   )
 
-  # category labels are shown without their group prefix,
-  # secondary young and mature forest are shown together as secdf
+  # labels drop their group prefix, secmf/secyf are shown together as secdf
   stripPrefix <- function(item) sub("^[^.]+\\.", "", item)
   mergeSecdf <- function(item) sub("^sec(mf|yf)$", "secdf", stripPrefix(item))
   itemMaps <- list(woodHarvestArea = mergeSecdf, bioh = mergeSecdf)
