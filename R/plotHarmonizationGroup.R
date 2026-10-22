@@ -19,7 +19,7 @@ plotHarmonizationGroup <- function(prefix, name, d, ylab, harmonizationPeriod, p
   linetypes <- c(absoluteChanges = "solid", inputUnharmonized = "dashed",
                  fadeForest = "dotted", fade = "dotdash")
   fontsize <- 14
-  d <- aggregate(Value ~ Year + Item + Method, d, sum)
+  d <- stats::aggregate(Value ~ Year + Item + Method, d, sum)
   d$Item <- factor(d$Item)
   fadeEndShown <- any(c("fade", "fadeForest") %in% unique(d$Method))
   .data <- ggplot2::.data
