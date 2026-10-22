@@ -36,11 +36,14 @@ Harmonize absolute fertilizer in Tg yr-1, then convert to fertilizer rate
 in kg ha-1 yr-1. For absoluteChanges the tonnage changes of the input since
 the harmonization year are applied regionally, projected onto the harmonized
 crop group areas (toolProjectFertilizerTg). The rates are then rescaled per
-crop category and year so that the global fertilizer totals from the
-harmonization year on keep a constant offset to the input (parallel
+region, crop category and year so that each region's fertilizer total from
+the harmonization year on keeps a constant offset to its own input (parallel
 year-to-year changes), redistributing amounts lost where zero clamping or
-missing cropland removed fertilizer, and finally capped at the plausibility
-threshold (toolCapFertilizerKgPerHa).
+missing cropland removed fertilizer to the other cells of the same region,
+falling back to the global factor exactly in those crop group and year
+tables where a region lost all its cropland and can no longer hold its
+tonnes, and finally capped at the plausibility threshold
+(toolCapFertilizerKgPerHa).
 }
 \author{
 Pascal Sauer
