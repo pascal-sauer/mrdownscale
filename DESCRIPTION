@@ -31,7 +31,6 @@ Imports:
     withr
 Suggests:
     covr,
-    ggplot2,
     knitr,
     mrlandcore,
     rmarkdown,
