@@ -32,11 +32,13 @@ test_that("calcLandHarmonized works with harmonization = absoluteChanges", {
 
   # temporarily replaces calcOutput in the package namespace, so the internal
   # source data calls return the synthetic data above and anything else errors
+  # for equal harmonization years the Extrapolated target is the LowRes target
+  # returned unchanged (see test-calcLandTargetExtrapolated.R)
   local_mocked_bindings(
     calcOutput = function(name, ...) {
       switch(name,
              LandInputRecategorized = xInput,
-             LandTargetLowRes = xTarget,
+             LandTargetExtrapolated = xTarget,
              stop("unexpected calcOutput call for \"", name, "\""))
     }
   )

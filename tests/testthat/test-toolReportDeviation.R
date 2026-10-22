@@ -1,21 +1,4 @@
-# helper for toolReportAreaDeviation, which uses messages
-captureConditions <- function(expr) {
-  conditions <- character()
-  value <- withCallingHandlers(
-    expr,
-    message = function(m) {
-      conditions <<- unique(c(conditions, conditionMessage(m)))
-      invokeRestart("muffleMessage")
-    },
-    warning = function(w) {
-      conditions <<- unique(c(conditions, conditionMessage(w)))
-      invokeRestart("muffleWarning")
-    }
-  )
-  return(list(value = value, conditions = conditions))
-}
-
-test_that("toolReportAreaDeviation reports positive and negative deviations separately", {
+test_that("toolReportDeviation reports positive and negative deviations separately", {
   xOut <- new.magpie(c("reg.a", "reg.b"), years = c(2020, 2025, 2030),
                      names = c("c3ann_rainfed", "urban"), fill = 0)
   xOut["reg.a", 2020, "c3ann_rainfed"] <- 10
@@ -30,7 +13,7 @@ test_that("toolReportAreaDeviation reports positive and negative deviations sepa
   xRaw["reg.a", , "c3ann_rainfed"] <- c(14, 13)
   xRaw["reg.b", , "c3ann_rainfed"] <- c(5, 8)
 
-  run <- captureConditions(toolReportAreaDeviation(
+  run <- captureConditions(toolReportDeviation(
     xRaw, xOut,
     groups = list("forest and other land" = character(0), cropland = "c3ann_rainfed",
                   "pasture and rangeland" = character(0))
@@ -46,7 +29,7 @@ test_that("toolReportAreaDeviation reports positive and negative deviations sepa
   expect_match(cropGroup, "total,-2\\.56,7\\.69,-10\\.3,-0\\.5,1\\.5,-2")
 })
 
-test_that("toolReportAreaDeviation sorts by gross deviation and sums group totals", {
+test_that("toolReportDeviation sorts by gross deviation and sums group totals", {
   xOut <- new.magpie("reg.a", years = c(2020, 2025, 2030),
                      names = c("c3ann_rainfed", "c4ann_rainfed", "urban"), fill = 0)
   xOut["reg.a", , "c3ann_rainfed"] <- c(10, 10, 10)
@@ -59,7 +42,7 @@ test_that("toolReportAreaDeviation sorts by gross deviation and sums group total
   xRaw["reg.a", , "c3ann_rainfed"] <- c(11, 9)
   xRaw["reg.a", , "c4ann_rainfed"] <- c(21, 20)
 
-  run <- captureConditions(toolReportAreaDeviation(
+  run <- captureConditions(toolReportDeviation(
     xRaw, xOut,
     groups = list("forest and other land" = character(0),
                   cropland = c("c3ann_rainfed", "c4ann_rainfed"),
@@ -77,17 +60,17 @@ test_that("toolReportAreaDeviation sorts by gross deviation and sums group total
                 gregexpr("c3ann_rainfed", cropGroup)[[1]][1])
 })
 
-test_that("toolReportAreaDeviation rejects item order mismatch", {
+test_that("toolReportDeviation rejects item order mismatch", {
   xOut <- new.magpie("reg.a", years = c(2020, 2025),
                      names = c("c3ann_rainfed", "urban"), fill = 1)
   # magclass arithmetic aligns silently and keeps the item order of the first
   # operand, so without an assertion the values would be relabeled wrongly
   xRaw <- new.magpie("reg.a", years = 2025, names = c("urban", "c3ann_rainfed"), fill = 1)
-  expect_error(toolReportAreaDeviation(xRaw, xOut, groups = list(cropland = "c3ann_rainfed")),
+  expect_error(toolReportDeviation(xRaw, xOut, groups = list(cropland = "c3ann_rainfed")),
                "identical\\(getItems")
 })
 
-test_that("toolReportAreaDeviation handles zero output area", {
+test_that("toolReportDeviation handles zero output area", {
   xOut <- new.magpie("reg.a", years = c(2020, 2025, 2030),
                      names = c("c4ann_rainfed", "urban"), fill = 0)
   xRaw <- new.magpie("reg.a", years = c(2025, 2030),
@@ -96,7 +79,7 @@ test_that("toolReportAreaDeviation handles zero output area", {
   # deviation is infinite and the absent positive one is n/a, not NaN
   xRaw["reg.a", , "c4ann_rainfed"] <- c(1, 0)
 
-  run <- captureConditions(toolReportAreaDeviation(
+  run <- captureConditions(toolReportDeviation(
     xRaw, xOut,
     groups = list("forest and other land" = character(0), cropland = "c4ann_rainfed",
                   "pasture and rangeland" = character(0))
@@ -105,4 +88,41 @@ test_that("toolReportAreaDeviation handles zero output area", {
   cropGroup <- gsub("[[:space:]]", "", grep("group \"cropland\"", run$conditions, value = TRUE))
   expect_length(cropGroup, 1)
   expect_match(cropGroup, "c4ann_rainfed,-Inf,n/a,-Inf,-0\\.5,0,-0\\.5")
+})
+
+test_that("toolReportDeviation reports in the given unit or unit-neutral", {
+  xOut <- new.magpie("reg.a", years = c(2020, 2025),
+                     names = c("c3ann_rainfed", "urban"), fill = 0)
+  xOut["reg.a", 2025, "c3ann_rainfed"] <- 10
+  xRaw <- new.magpie("reg.a", years = 2025,
+                     names = c("c3ann_rainfed", "urban"), fill = 0)
+  xRaw["reg.a", , "c3ann_rainfed"] <- 12
+
+  groups <- list(cropland = "c3ann_rainfed")
+  mha <- gsub("[[:space:]]", "",
+              grep("group \"cropland\"",
+                   captureConditions(toolReportDeviation(xRaw, xOut, groups, unit = "Mha"))$conditions,
+                   value = TRUE))
+  expect_match(mha, "variable,=%,\\+%,-%,=Mha,\\+Mha,-Mha")
+  expect_match(mha, "asmeanpertimestepinMhaandas%oftheoutput")
+
+  plain <- gsub("[[:space:]]", "",
+                grep("group \"cropland\"",
+                     captureConditions(toolReportDeviation(xRaw, xOut, groups))$conditions,
+                     value = TRUE))
+  expect_match(plain, "variable,=%,\\+%,-%,=,\\+,-")
+  expect_match(plain, "asmeanpertimestepandas%oftheoutput")
+  expect_false(grepl("Mha", plain))
+})
+
+test_that("toolReportDeviation skips groups with only sub-tolerance deviations", {
+  xOut <- new.magpie("reg.a", years = c(2020, 2025),
+                     names = c("c3ann_rainfed", "urban"), fill = 0)
+  xRaw <- new.magpie("reg.a", years = 2025,
+                     names = c("c3ann_rainfed", "urban"), fill = 0)
+  # a deviation of 10^-6 Mha is below the 10^-5 tolerance, so nothing is reported
+  xRaw["reg.a", , "c3ann_rainfed"] <- 10^-6
+
+  run <- captureConditions(toolReportDeviation(xRaw, xOut, groups = list(cropland = "c3ann_rainfed")))
+  expect_length(grep("group", run$conditions), 0)
 })

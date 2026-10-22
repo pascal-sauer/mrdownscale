@@ -19,17 +19,21 @@
 #' that would persist in all later timesteps (toolReplaceExpansion caps prim
 #' areas at previous timestep). Hence they are only scaled down once all other
 #' variables in their group were scaled down to zero first.
+#' This group compensation and constant total area applies only to data whose
+#' total area is constant (constantTotal = TRUE). For constantTotal = FALSE data
+#' negative values are simply clamped to zero.
 #'
 #' @param xInput input data as magpie object
 #' @param xTarget target data as magpie object
 #' @param harmonizationPeriod Two identical integer values, the year the
 #'   absolute changes of the input data are applied to, must be present in both
 #'   input and target data
+#' @param constantTotal TRUE if the total area of each cell is constant over time
 #' @return harmonized data set as magpie object with data from target for years
 #'   up to and including the harmonization year and absolute changes from input
 #'   relative to the harmonization year afterwards
 #' @author Pascal Sauer
-toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
+toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod, constantTotal) {
   hp <- harmonizationPeriod
   stopifnot(length(hp) == 2,
             round(hp) == hp,
@@ -47,16 +51,11 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
             hy %in% targetYears)
   xInput <- xInput[getItems(xTarget, 1), , getItems(xTarget, 3)]
 
-  # total area of each cell, constant over time
-  targetArea <- dimSums(setYears(xTarget[, hy, ], NULL), 3)
-  stopifnot(all(abs(dimSums(xTarget, 3) - targetArea) < 10^-5))
-
   # apply absolute changes of input data to target data of the harmonization year
   # negative numbers are possible if input data loses more area of a
   # category than the target data has in the harmonization year
   raw <- setYears(xTarget[, hy, ], NULL) + (xInput[, inputYears > hy, ] - setYears(xInput[, hy, ], NULL))
   changed <- raw
-  stopifnot(all(abs(dimSums(changed, 3) - targetArea) < 10^-5))
 
   croplandPattern <- "_rainfed|_irrigated"
   groups <- list(
@@ -64,45 +63,59 @@ toolHarmonizeAbsoluteChanges <- function(xInput, xTarget, harmonizationPeriod) {
     cropland = grep(croplandPattern, getItems(changed, 3), value = TRUE),
     "pasture and rangeland" = intersect(c("pastr", "range"), getItems(changed, 3))
   )
-  stopifnot(setequal(c(unlist(groups), "urban"), getItems(changed, 3)))
-  # for crops, negative values are first compensated by scaling
-  # the corresponding rainfed/irrigated twin of the same crop, then all crops.
-  # Categories without twin (incl. all non-crops) are compensated by scaling the whole group.
-  for (group in groups) {
-    groupArea <- changed[, , group]
-    groupTarget <- pmax(dimSums(groupArea, 3), 0)
 
-    cropItems <- grep(croplandPattern, group, value = TRUE)
-    pairKey <- sub(croplandPattern, "", cropItems)
-    pairs <- split(cropItems, pairKey)
-    for (pair in pairs[lengths(pairs) == 2]) {
-      pairArea <- groupArea[, , pair]
-      groupArea[, , pair] <- toolHandleNegatives(pairArea, targetArea = pmax(dimSums(pairArea, 3), 0))
+  if (constantTotal) {
+    # total area of each cell, constant over time
+    targetArea <- dimSums(setYears(xTarget[, hy, ], NULL), 3)
+    stopifnot(all(abs(dimSums(xTarget, 3) - targetArea) < 10^-5))
+    stopifnot(all(abs(dimSums(changed, 3) - targetArea) < 10^-5))
+
+    stopifnot(setequal(c(unlist(groups), "urban"), getItems(changed, 3)))
+    # for crops, negative values are first compensated by scaling
+    # the corresponding rainfed/irrigated twin of the same crop.
+    # Categories without twin (incl. all non-crops) are compensated by scaling the whole group.
+    for (group in groups) {
+      groupArea <- changed[, , group]
+      groupTarget <- pmax(dimSums(groupArea, 3), 0)
+
+      cropItems <- grep(croplandPattern, group, value = TRUE)
+      pairKey <- sub(croplandPattern, "", cropItems)
+      pairs <- split(cropItems, pairKey)
+      for (pair in pairs[lengths(pairs) == 2]) {
+        pairArea <- groupArea[, , pair]
+        groupArea[, , pair] <- toolHandleNegatives(pairArea, targetArea = pmax(dimSums(pairArea, 3), 0))
+      }
+
+      changed[, , group] <- toolHandleNegatives(groupArea, targetArea = groupTarget,
+                                                lastScaled = c("primf", "primn"))
     }
 
-    changed[, , group] <- toolHandleNegatives(groupArea, targetArea = groupTarget,
-                                              lastScaled = c("primf", "primn"))
+    changed[, , "urban"] <- pmax(changed[, , "urban"], 0)
+
+    nonUrbanTarget <- targetArea - dimSums(changed[, , "urban"], 3)
+    stopifnot(all(nonUrbanTarget >= -10^-5))
+    nonUrbanTarget[nonUrbanTarget < 0] <- 0
+    nonUrban <- setdiff(getItems(changed, 3), "urban")
+    changed[, , nonUrban] <- toolHandleNegatives(changed[, , nonUrban], targetArea = nonUrbanTarget,
+                                                 lastScaled = c("primf", "primn"))
+
+    out <- mbind(xTarget[, targetYears <= hy, ], changed)
+
+    # prim expansion is not expected, because we're applying a non-increasing prim trend, and
+    # prim is protected when handling negatives, so warn for small increases
+    out <- toolReplaceExpansion(out, "primf", "secdf")
+    out <- toolReplaceExpansion(out, "primn", "secdn")
+
+    toolReportDeviation(raw, out, groups = groups, unit = "Mha")
+
+    stopifnot(all(abs(dimSums(out, 3) - targetArea) < 10^-5))
+  } else {
+    # no total to keep constant: apply the raw absolute changes and clamp negatives to zero
+    out <- mbind(xTarget[, targetYears <= hy, ], raw)
+    out[out < 0] <- 0
+    # the nonland item set mixes units, so report per category prefix instead
+    toolReportDeviation(raw, out, groups = split(getItems(raw, 3), sub("\\..*$", "", getItems(raw, 3))))
   }
-
-  changed[, , "urban"] <- pmax(changed[, , "urban"], 0)
-
-  nonUrbanTarget <- targetArea - dimSums(changed[, , "urban"], 3)
-  stopifnot(all(nonUrbanTarget >= -10^-5))
-  nonUrbanTarget[nonUrbanTarget < 0] <- 0
-  nonUrban <- setdiff(getItems(changed, 3), "urban")
-  changed[, , nonUrban] <- toolHandleNegatives(changed[, , nonUrban], targetArea = nonUrbanTarget,
-                                               lastScaled = c("primf", "primn"))
-
-  out <- mbind(xTarget[, targetYears <= hy, ], changed)
-
-  # prim expansion is not expected, because we're applying a non-increasing prim trend, and
-  # prim is protected when handling negatives, so warn for small increases
-  out <- toolReplaceExpansion(out, "primf", "secdf")
-  out <- toolReplaceExpansion(out, "primn", "secdn")
-
-  toolReportAreaDeviation(raw, out, groups = groups)
-
-  stopifnot(all(abs(dimSums(out, 3) - targetArea) < 10^-5))
 
   return(out)
 }
