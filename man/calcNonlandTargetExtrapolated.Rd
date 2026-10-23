@@ -13,7 +13,8 @@ calcNonlandTargetExtrapolated(input, target, harmonizationPeriod)
 for available target datasets}
 
 \item{harmonizationPeriod}{Two integer values, will extrapolate to all years
-present in input data between harmonization start and end year}
+present in input data between harmonization start and end year. If both
+values are equal, the target data up to that year is returned unchanged.}
 }
 \value{
 extrapolated nonland target data

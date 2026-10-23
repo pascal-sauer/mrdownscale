@@ -50,13 +50,15 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
   xTarget <- calcOutput("NonlandTargetExtrapolated", input = input, target = target,
                         harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
   xTarget <- xTarget[, , "wood_harvest_area"]
-  harmonizer <- toolGetHarmonizer(harmonization)
+  harmonizer <- toolGetHarmonizer(harmonization, constantTotal = FALSE)
   rawHarvestHarmonized <- harmonizer(xInput, xTarget, harmonizationPeriod = harmonizationPeriod)
 
-  afterHarmonization <- getYears(xInput, as.integer = TRUE)
-  afterHarmonization <- afterHarmonization[afterHarmonization >= harmonizationPeriod[2]]
-  stopifnot(rawHarvestHarmonized >= 0,
-            rawHarvestHarmonized[, afterHarmonization, ] == xInput[, afterHarmonization, ])
+  stopifnot(rawHarvestHarmonized >= 0)
+  if (harmonization != "absoluteChanges") {
+    afterHarmonization <- getYears(xInput, as.integer = TRUE)
+    afterHarmonization <- afterHarmonization[afterHarmonization >= harmonizationPeriod[2]]
+    stopifnot(rawHarvestHarmonized[, afterHarmonization, ] == xInput[, afterHarmonization, ])
+  }
   rawHarvestHarmonized <- toolAggregateWoodHarvest(rawHarvestHarmonized)
 
   # shift harvest from prim to secd to match prim land reduction
