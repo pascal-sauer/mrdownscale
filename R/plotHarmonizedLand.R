@@ -46,11 +46,11 @@ plotHarmonizedLand <- function(harmonizations = c("absoluteChanges", "inputUnhar
     } else {
       # calcLandHarmonized requires two equal values for absoluteChanges
       period <- if (harmonization == "absoluteChanges") harmonizationPeriod[c(1, 1)] else harmonizationPeriod
-      methods[[harmonization]] <- clean(suppressMessages(calcOutput("LandHarmonized", input = input,
-                                                                    target = target,
-                                                                    harmonizationPeriod = period,
-                                                                    harmonization = harmonization,
-                                                                    aggregate = FALSE)))
+      methods[[harmonization]] <- clean(calcOutput("LandHarmonized", input = input,
+                                                   target = target,
+                                                   harmonizationPeriod = period,
+                                                   harmonization = harmonization,
+                                                   aggregate = FALSE))
     }
   }
 

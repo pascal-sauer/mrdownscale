@@ -48,16 +48,16 @@ plotHarmonizedNonLand <- function(harmonizations = c("absoluteChanges", "inputUn
     } else {
       # calcLandHarmonized requires two equal values for absoluteChanges
       period <- if (harmonization == "absoluteChanges") harmonizationPeriod[c(1, 1)] else harmonizationPeriod
-      methods[[harmonization]] <- clean(suppressMessages(calcOutput("NonlandHarmonized", input = input,
-                                                                    target = target,
-                                                                    harmonizationPeriod = period,
-                                                                    harmonization = harmonization,
-                                                                    aggregate = FALSE)))
+      methods[[harmonization]] <- clean(calcOutput("NonlandHarmonized", input = input,
+                                                   target = target,
+                                                   harmonizationPeriod = period,
+                                                   harmonization = harmonization,
+                                                   aggregate = FALSE))
       # uncleaned on purpose: denominator of the fertilizer rate conversion
-      landHarmonized <- suppressMessages(calcOutput("LandHarmonized", input = input, target = target,
-                                                    harmonizationPeriod = period,
-                                                    harmonization = harmonization,
-                                                    aggregate = FALSE))
+      landHarmonized <- calcOutput("LandHarmonized", input = input, target = target,
+                                   harmonizationPeriod = period,
+                                   harmonization = harmonization,
+                                   aggregate = FALSE)
       fertilizerTg[[harmonization]] <- clean(toolFertilizerTg(methods[[harmonization]][, , "fertilizer"],
                                                               landHarmonized))
     }
