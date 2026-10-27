@@ -9,7 +9,13 @@
 #' and scaled so the total harmonized bioh is reached. bioh of clusters
 #' whose harmonized harvest area is zero is redistributed to clusters with
 #' harvest area in the same region, falling back to the global pool
-#' (toolRedistributeBioh).
+#' (toolRedistributeBioh). For absoluteChanges the total is kept per region
+#' instead of per cluster: the regional bioh changes of the input since the
+#' harmonization year are applied to the target, as for fertilizer, and the
+#' regional total is distributed in proportion to the calculated bioh of each
+#' cluster and source type (harmonized harvest area times harmonized kg C per
+#' mega hectare); regions without harvest area hand their bioh to the global
+#' pool.
 #' Harmonize absolute fertilizer in Tg yr-1, then convert to fertilizer rate
 #' in kg ha-1 yr-1. For absoluteChanges the tonnage changes of the input since
 #' the harmonization year are applied regionally, projected onto the harmonized
@@ -56,6 +62,11 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
                                                     harmonizationPeriod = hp, aggregate = FALSE))
   harmonizationTarget <- mbind(xTarget[, , c("wood_harvest_area", "fertilizer"), invert = TRUE],
                                kgCPerMhaTarget, fertilizerTgTarget)
+  if (harmonization == "absoluteChanges") {
+    # bioh is harmonized on regional totals below
+    harmonizationInput <- harmonizationInput[, , "bioh", invert = TRUE]
+    harmonizationTarget <- harmonizationTarget[, , "bioh", invert = TRUE]
+  }
 
   harmonizer <- toolGetHarmonizer(harmonization, constantTotal = FALSE)
   out <- harmonizer(harmonizationInput, harmonizationTarget, harmonizationPeriod = hp)
@@ -134,22 +145,46 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   getItems(biohCalculated, 3.1) <- sub("kgC_per_Mha$", "bioh", getItems(biohCalculated, 3.1))
   stopifnot(0 <= biohCalculated, biohCalculated < Inf)
 
-  # redistribute bioh from clusters without harvest area
-  out[, , "bioh"] <- toolRedistributeBioh(out[, , "bioh"], biohCalculated)
+  if (harmonization == "absoluteChanges") {
+    # per cluster and source type the clamping at zero would keep the input's
+    # increases but cut off its decreases, so the absolute changes are applied
+    # to the regional totals, as for fertilizer, and split by calculated bioh
+    biohInput <- dimSums(xInput[, c(hp[1], yearsAfterHy), "bioh"], c(1.2, 3))
+    expectedRegionBioh <- setYears(dimSums(xTarget[, hp[1], "bioh"], c(1.2, 3)), NULL) +
+      (biohInput[, yearsAfterHy, ] - setYears(biohInput[, hp[1], ], NULL))
+    expectedRegionBioh[expectedRegionBioh < 0] <- 0
 
-  biohNormalization <- dimSums(out[, , "bioh"], 3) / dimSums(biohCalculated, 3)
-  biohNormalization[is.nan(biohNormalization)] <- 0
-  stopifnot(0 <= biohNormalization, biohNormalization < Inf)
+    regionWeight <- dimSums(biohCalculated[, yearsAfterHy, ], c(1.2, 3))
+    regionReceiver <- regionWeight > 0
+    regionWeight[regionWeight == 0] <- 1
+    # regions without harvest area hand their bioh to the global pool
+    toolExpectTrue(all(regionReceiver | expectedRegionBioh == 0),
+                   "Regions with expected bioh have harvest area to hold it", falseStatus = "warn")
+    globalStranded <- dimSums(expectedRegionBioh * (1 - regionReceiver), 1)
+    globalWeight <- dimSums(biohCalculated[, yearsAfterHy, ], c(1, 3))
+    globalWeight[globalWeight == 0] <- 1
+    biohAdapted <- (expectedRegionBioh * regionReceiver / regionWeight + globalStranded / globalWeight) *
+      biohCalculated[, yearsAfterHy, ]
+    bioh <- mbind(xTarget[, getYears(xTarget, as.integer = TRUE) <= hp[1], "bioh"], biohAdapted)
+    out <- mbind(out, bioh)
+  } else {
+    # redistribute bioh from clusters without harvest area
+    out[, , "bioh"] <- toolRedistributeBioh(out[, , "bioh"], biohCalculated)
 
-  biohAdapted <- biohNormalization * biohCalculated
+    biohNormalization <- dimSums(out[, , "bioh"], 3) / dimSums(biohCalculated, 3)
+    biohNormalization[is.nan(biohNormalization)] <- 0
+    stopifnot(0 <= biohNormalization, biohNormalization < Inf)
 
-  toolExpectLessDiff(dimSums(out[, , "bioh"], 3),
-                     dimSums(biohAdapted, 3),
-                     10^-4, "Adapting bioh to harmonized wood harvest area does not change total bioh")
+    biohAdapted <- biohNormalization * biohCalculated
 
-  out[, , "bioh"] <- biohAdapted
+    toolExpectLessDiff(dimSums(out[, , "bioh"], 3),
+                       dimSums(biohAdapted, 3),
+                       10^-4, "Adapting bioh to harmonized wood harvest area does not change total bioh")
+
+    out[, , "bioh"] <- biohAdapted
+  }
   out <- mbind(out, harvestArea)
-  out <- out[, , getItems(kgCPerMhaTarget, 3), invert = TRUE]
+  out <- out[, , getItems(xTarget, 3)]
 
   attr(out, "geometry") <- geometry
   attr(out, "crs")      <- crs
@@ -179,6 +214,11 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
     fertilizerOutput <- dimSums(toolFertilizerTg(out[, yearsAfterHy, "fertilizer"], landHarmonizedMha), 1)
     toolExpectLessDiff(fertilizerOutput, expectedGlobalTg, 10^-5,
                        "Global fertilizer totals are parallel to input after the harmonization year")
+    # 1 kg C yr-1 on regional totals of 10^11
+    toolExpectLessDiff(dimSums(out[, yearsAfterHy, "bioh"], c(1.2, 3)), expectedRegionBioh, 1,
+                       "Regional bioh totals are parallel to input after the harmonization year")
+    toolExpectLessDiff(dimSums(out[, yearsAfterHy, "bioh"], c(1, 3)), dimSums(expectedRegionBioh, 1), 1,
+                       "Global bioh totals are parallel to input after the harmonization year")
   } else {
     years <- getYears(out, TRUE)[getYears(out, TRUE) >= hp[2]]
     fertilizerInput <- nonlandInput[, years, "fertilizer"]

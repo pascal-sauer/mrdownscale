@@ -31,7 +31,13 @@ harmonizing it. This is then multiplied by the harmonized wood harvest area
 and scaled so the total harmonized bioh is reached. bioh of clusters
 whose harmonized harvest area is zero is redistributed to clusters with
 harvest area in the same region, falling back to the global pool
-(toolRedistributeBioh).
+(toolRedistributeBioh). For absoluteChanges the total is kept per region
+instead of per cluster: the regional bioh changes of the input since the
+harmonization year are applied to the target, as for fertilizer, and the
+regional total is distributed in proportion to the calculated bioh of each
+cluster and source type (harmonized harvest area times harmonized kg C per
+mega hectare); regions without harvest area hand their bioh to the global
+pool.
 Harmonize absolute fertilizer in Tg yr-1, then convert to fertilizer rate
 in kg ha-1 yr-1. For absoluteChanges the tonnage changes of the input since
 the harmonization year are applied regionally, projected onto the harmonized
