@@ -639,8 +639,9 @@ test_that("toolCapFertilizerKgPerHa falls back to the global pool and skips infe
   land <- new.magpie(c("regone.1", "regtwo.1"), years = 2025, names = "c3ann", fill = 100)
 
   # regone has no headroom of its own, the pass runs over the global pool:
-  # its 30 Tg excess fits into regtwo's 110 Tg spare
-  capped <- toolCapFertilizerKgPerHa(fert, land)
+  # its 30 Tg excess fits into regtwo's 110 Tg spare, reported as a warning
+  conditions <- captureConditions(capped <- toolCapFertilizerKgPerHa(fert, land))
+  expect_true(any(grepl("Check failed.*Regions absorb their own fertilizer", conditions$conditions)))
   expect_equal(as.vector(capped["regone.1", , ]), 1200)
   expect_equal(as.vector(capped["regtwo.1", , ]), 400)
 
