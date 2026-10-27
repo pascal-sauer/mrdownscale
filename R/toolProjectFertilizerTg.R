@@ -22,17 +22,7 @@
 toolProjectFertilizerTg <- function(fertilizerTgTarget, fertilizerTgInput, landMha, harmonizationYear) {
   yearsAfter <- getYears(fertilizerTgInput, as.integer = TRUE)
   yearsAfter <- yearsAfter[yearsAfter > harmonizationYear]
-  regionTg <- dimSums(fertilizerTgInput, 1.2)
-  regionDeltaTg <- regionTg[, yearsAfter, ] - setYears(regionTg[, harmonizationYear, ], NULL)
   areaMha <- toolAggregateCropland(landMha[getItems(fertilizerTgTarget, 1), yearsAfter, ],
                                    getItems(fertilizerTgInput, 3.2), keepOthers = FALSE)
-  share <- areaMha / dimSums(areaMha, 1.2)
-  share[is.nan(share)] <- 0
-  # the anchor comes first so that the result follows its item order, the
-  # magclass arithmetic aligns the delta with it by name
-  projectedTg <- setYears(fertilizerTgTarget[, harmonizationYear, ], NULL) + regionDeltaTg * share
-  projectedTg[projectedTg < 0] <- 0
-  stopifnot(identical(getItems(projectedTg, 1), getItems(fertilizerTgTarget, 1)),
-            identical(getItems(projectedTg, 3), getItems(fertilizerTgTarget, 3)))
-  return(projectedTg)
+  return(toolProjectRegionalDelta(fertilizerTgTarget, fertilizerTgInput, areaMha, harmonizationYear))
 }
