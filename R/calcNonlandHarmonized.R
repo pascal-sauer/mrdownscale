@@ -66,19 +66,16 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
 
   yearsAfterHy <- getYears(out, as.integer = TRUE)[getYears(out, as.integer = TRUE) > hp[1]]
 
+  out[, , "fertilizer"] <- toolFertilizerKgPerHa(out[, , "fertilizer"], landHarmonizedMha)
+
   if (harmonization == "absoluteChanges") {
     # treat the harmonized land as truth for fertilizer tonnages: instead of the
     # per-cell input changes, the regional tonnage changes are projected onto
     # the harmonized crop group areas, so tonnes only grow where the harmonized
     # land still has cropland of that crop group
     fertilizerTgInput <- xInput[, c(hp[1], yearsAfterHy), "fertilizer"]
-    out[, yearsAfterHy, "fertilizer"] <- toolProjectFertilizerTg(fertilizerTgTarget, fertilizerTgInput,
-                                                                 landHarmonizedMha, hp[1])
-  }
-
-  out[, , "fertilizer"] <- toolFertilizerKgPerHa(out[, , "fertilizer"], landHarmonizedMha)
-
-  if (harmonization == "absoluteChanges") {
+    projectedTg <- toolProjectFertilizerTg(fertilizerTgTarget, fertilizerTgInput,
+                                           landHarmonizedMha, hp[1])
     regionTgInput <- dimSums(fertilizerTgInput, 1.2)
     expectedRegionTg <- setYears(dimSums(fertilizerTgTarget[, hp[1], ], 1.2), NULL) +
       (regionTgInput[, yearsAfterHy, ] - setYears(regionTgInput[, hp[1], ], NULL))
@@ -87,37 +84,22 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
     # expectations summed up
     expectedGlobalTg <- dimSums(expectedRegionTg, 1)
 
-    # Inf rates where clamping removed all cropland become 0, as done by toolFertilizerKgPerHa
-    fertilizer <- out[, , "fertilizer"]
-    fertilizer[fertilizer == Inf] <- 0
+    # cells whose harmonized land has no cropland of the crop group cannot hold
+    # tonnes, they lose them, which the rescaling compensates
+    cropMha <- toolAggregateCropland(landHarmonizedMha[getItems(fertilizerTgInput, 1), yearsAfterHy, ],
+                                     getItems(fertilizerTgInput, 3.2), keepOthers = FALSE)
+    projectedTg[cropMha == 0] <- 0
 
-    # zero clamping and the Inf -> 0 replacement broke the parallelism, rescale per
+    # zero clamping and the lost tonnes broke the parallelism, rescale per
     # region, crop category and year to restore each region's expected tonnage
-    actualRegionTg <- dimSums(toolFertilizerTg(fertilizer[, yearsAfterHy, ], landHarmonizedMha), 1.2)
-    factor <- expectedRegionTg / actualRegionTg
-    factor[actualRegionTg == 0] <- 1
-    # unholdable tonnes: expected > 0 where the region lost all cropland of the
-    # crop group (actual == 0), zero elsewhere, summed up per crop and year
-    unholdableTg <- dimSums(expectedRegionTg * (actualRegionTg == 0), 1)
-    if (!toolExpectTrue(sum(unholdableTg[]) == 0,
-                        "Regions with expected fertilizer tonnage have cropland left to hold it",
-                        falseStatus = "warn")) {
-      # a region that lost all cropland can never hold its tonnes, so exactly the
-      # affected crop group and year tables fall back to the global factor
-      actualGlobalTg <- dimSums(actualRegionTg, 1)
-      factorGlobal <- expectedGlobalTg / actualGlobalTg
-      factorGlobal[actualGlobalTg == 0] <- 1
-      fallback <- unholdableTg > 0
-      factor <- factor * (fallback != TRUE) + factorGlobal * fallback
-    }
-    fertilizer[, yearsAfterHy, ] <- fertilizer[, yearsAfterHy, ] * factor
+    rescaledTg <- toolRescaleRegionTotals(projectedTg, expectedRegionTg,
+                                          "Regions with expected fertilizer tonnage have cropland left to hold it")
 
     # cap the rates at the plausibility threshold of toolCheckFertilizer, which
     # moves the anchor tonnage left on collapsed-area cells into the headroom
     # of the other cells of their region
-    fertilizer[, yearsAfterHy, ] <- toolCapFertilizerKgPerHa(fertilizer[, yearsAfterHy, ], landHarmonizedMha)
-
-    out[, , "fertilizer"] <- fertilizer
+    rescaledKgPerHa <- toolFertilizerKgPerHa(rescaledTg, landHarmonizedMha)
+    out[, yearsAfterHy, "fertilizer"] <- toolCapFertilizerKgPerHa(rescaledKgPerHa, landHarmonizedMha)
   }
 
   harvestArea <- calcOutput("WoodHarvestAreaHarmonized", input = input, target = target,
