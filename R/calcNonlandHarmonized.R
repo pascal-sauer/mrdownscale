@@ -6,7 +6,12 @@
 #' Wood harvest biomass (bioh) is adapted to the harmonized wood harvest area
 #' by calculating kg C per mega hectare for input and target data and
 #' harmonizing it. This is then multiplied by the harmonized wood harvest area
-#' and scaled so the total harmonized bioh is reached. bioh of clusters
+#' and scaled so the total harmonized bioh is reached. For absoluteChanges the
+#' regional and global bioh totals stay parallel to the input (constant offset)
+#' after the harmonization year: where zero clamping inflated a region's total
+#' above its expectation it is rescaled back, the per-cell kg C per mega
+#' hectare times harvest area split only deciding which cells can host how
+#' much. bioh of clusters
 #' whose harmonized harvest area is zero is redistributed to clusters with
 #' harvest area in the same region, falling back to the global pool
 #' (toolRedistributeBioh).
@@ -116,6 +121,24 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   getItems(biohCalculated, 3.1) <- sub("kgC_per_Mha$", "bioh", getItems(biohCalculated, 3.1))
   stopifnot(0 <= biohCalculated, biohCalculated < Inf)
 
+  if (harmonization == "absoluteChanges") {
+    # zero clamping of the raw absolute changes broke the parallelism, rescale
+    # each region's bioh total onto its expectation, keeping the per-cell split
+    regionBiohInput <- dimSums(xInput[, c(hp[1], yearsAfterHy), "bioh"], c(1.2, 3))
+    expectedRegionBioh <- setYears(dimSums(xTarget[, hp[1], "bioh"], c(1.2, 3)), NULL) +
+      (regionBiohInput[, yearsAfterHy, ] - setYears(regionBiohInput[, hp[1], ], NULL))
+    expectedRegionBioh[expectedRegionBioh < 0] <- 0
+    bioh <- out[, yearsAfterHy, "bioh"]
+    biohTotal <- dimSums(bioh, 3)
+    rescaledBioh <- toolRescaleRegionTotals(biohTotal, expectedRegionBioh,
+                                            "Regions with expected bioh have harvest area left to hold it")
+    # the final item split is driven by kgC per Mha times harvest area, so only
+    # the totals can be parallel, split the rescaled total back proportionally
+    share <- bioh / biohTotal
+    share[is.na(share)] <- 0
+    out[, yearsAfterHy, "bioh"] <- share * rescaledBioh
+  }
+
   # redistribute bioh from clusters without harvest area
   out[, , "bioh"] <- toolRedistributeBioh(out[, , "bioh"], biohCalculated)
 
@@ -161,6 +184,11 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
     fertilizerOutput <- dimSums(toolFertilizerTg(out[, yearsAfterHy, "fertilizer"], landHarmonizedMha), 1)
     toolExpectLessDiff(fertilizerOutput, expectedGlobalTg, 10^-5,
                        "Global fertilizer totals are parallel to input after the harmonization year")
+    regionBiohOut <- dimSums(out[, yearsAfterHy, "bioh"], c(1.2, 3))
+    toolExpectLessDiff(regionBiohOut, expectedRegionBioh, 10^-5,
+                       "Regional bioh totals are parallel to input after the harmonization year")
+    toolExpectLessDiff(dimSums(regionBiohOut, 1), dimSums(expectedRegionBioh, 1), 10^-5,
+                       "Global bioh totals are parallel to input after the harmonization year")
   } else {
     years <- getYears(out, TRUE)[getYears(out, TRUE) >= hp[2]]
     fertilizerInput <- nonlandInput[, years, "fertilizer"]
