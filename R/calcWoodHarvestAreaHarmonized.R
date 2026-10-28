@@ -88,18 +88,21 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
     coverCap <- list()
 
     # distribute the cover total of every cell back onto its items, keeping the
-    # proportional split of the rescaled amounts as far as the item caps allow
+    # proportional split of the rescaled amounts as far as the item caps allow,
+    # cells that held nothing of the cover fill proportionally to their caps
     fillItems <- function(xAmount, capAmount, total) {
       target <- pmin(total, dimSums(capAmount, 3))
       amountTotal <- dimSums(xAmount, 3)
       scale <- target / amountTotal
-      scale[is.na(scale)] <- 0
+      scale[amountTotal == 0] <- 0
       out <- pmin(xAmount * scale, capAmount)
       spare <- pmax(capAmount - out, 0)
       spareTotal <- dimSums(spare, 3)
       gain <- spare * ((target - dimSums(out, 3)) / spareTotal)
       gain[is.na(gain)] <- 0
-      return(out + gain)
+      # the floating point noise from the proportional fill must not turn into
+      # negative harvest area, it crashes downstream consumers of the output
+      return(pmax(out + gain, 0))
     }
 
     for (cover in names(covers)) {
