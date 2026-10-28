@@ -451,3 +451,119 @@ test_that("absoluteChanges keeps the global cover totals parallel when a regiona
 
   expect_true(min(x) >= 0)
 })
+
+test_that("absoluteChanges charges a negative global cover expectation to the other cover", {
+  # both regions' other land input collapses so that the global other land
+  # expectation turns negative while the global forest expectation outweighs
+  # the loss: the floored other land total must be charged to the forest cover
+  # so the global total over all covers stays parallel to the input and the
+  # positive forest regions are scaled by the balancing factor 3 / 6
+  years <- c(2010, 2020, 2025, 2030)
+  land <- makeLand(years, list(
+    regone.1 = list(primf = 20, primn = 5, secdf = 50, secdn = 20, pltns = 10),
+    regtwo.1 = list(primf = 20, primn = 5, secdf = 30, secdn = 15, pltns = 10)
+  ))
+
+  anchor <- list(primf = 0, primn = 0, secyf = 2, secmf = 0, pltns = 1, secnf = 4)
+  xTarget <- makeHarvest(c(2010, 2020), list(regone.1 = anchor, regtwo.1 = anchor))
+  # the un-floored cover expectations are forest 3 + 3 = 6 in both regions and
+  # other -5 in regone plus 2 in regtwo, giving the global totals 6 and -3
+  xInput <- makeHarvest(c(2020, 2025, 2030), list(
+    regone.1 = list(secyf = 2, pltns = 1, secnf = c(10, 1, 1)),
+    regtwo.1 = list(secyf = 2, pltns = 1, secnf = c(4, 2, 2))
+  ))
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             LandHarmonized = land,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+  conditions <- captureConditions(
+    result <- calcWoodHarvestAreaHarmonized(input = "magpie", target = "luh3",
+                                            harmonizationPeriod = c(2020, 2020),
+                                            harmonization = "absoluteChanges")
+  )
+  expect_false(any(grepl("Check failed", conditions$conditions)))
+  x <- result$x
+
+  regionTotal <- dimSums(toolAggregateWoodHarvest(x[, c(2025, 2030), ]), 1.2)
+  forestTotal <- dimSums(regionTotal[, , c("primf", "secdf", "pltns")], 3)
+  otherTotal <- dimSums(regionTotal[, , c("primn", "secdn")], 3)
+
+  # the floored other land cover gives up its whole global total
+  expect_equal(as.vector(dimSums(otherTotal, 1)[, 2025, ]), 0)
+  expect_equal(as.vector(dimSums(otherTotal, 1)[, 2030, ]), 0)
+
+  # the forest cover absorbs the charged loss: its global total is the summed
+  # un-floored global expectation 6 - 3, not its own global expectation 6
+  expect_equal(as.vector(dimSums(forestTotal, 1)[, 2025, ]), 3, tolerance = 10^-9)
+  expect_equal(as.vector(dimSums(forestTotal, 1)[, 2030, ]), 3, tolerance = 10^-9)
+
+  # the global total over both covers equals the un-floored expectation 3
+  expect_equal(as.vector(dimSums(forestTotal + otherTotal, 1)[, 2025, ]), 3, tolerance = 10^-9)
+  expect_equal(as.vector(dimSums(forestTotal + otherTotal, 1)[, 2030, ]), 3, tolerance = 10^-9)
+
+  # both positive forest regions are scaled by the balancing factor 3 / 6
+  expect_equal(as.vector(forestTotal["regone", 2025, ]), 1.5, tolerance = 10^-9)
+  expect_equal(as.vector(forestTotal["regtwo", 2025, ]), 1.5, tolerance = 10^-9)
+  expect_true(min(x) >= 0)
+})
+
+test_that("absoluteChanges cross-cover balancing is a no-op without a negative global cover expectation", {
+  # regone's other land expectation collapses below zero but regtwo's growth
+  # keeps the global other land expectation positive: the balancing factor is
+  # exactly 1 and both cover global totals stay parallel as before
+  years <- c(2010, 2020, 2025, 2030)
+  land <- makeLand(years, list(
+    regone.1 = list(primf = 20, primn = 5, secdf = 50, secdn = 20, pltns = 10),
+    regtwo.1 = list(primf = 20, primn = 5, secdf = 30, secdn = 20, pltns = 10)
+  ))
+
+  anchor <- list(primf = 0, primn = 0, secyf = 2, secmf = 0, pltns = 1, secnf = 4)
+  xTarget <- makeHarvest(c(2010, 2020), list(regone.1 = anchor, regtwo.1 = anchor))
+  # the un-floored cover expectations are forest 3 + 3 = 6 and other -5 in
+  # regone plus 20 in regtwo, giving the positive global totals 6 and 15
+  xInput <- makeHarvest(c(2020, 2025, 2030), list(
+    regone.1 = list(secyf = 2, pltns = 1, secnf = c(10, 1, 1)),
+    regtwo.1 = list(secyf = 2, pltns = 1, secnf = c(4, 20, 20))
+  ))
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             LandHarmonized = land,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+  conditions <- captureConditions(
+    result <- calcWoodHarvestAreaHarmonized(input = "magpie", target = "luh3",
+                                            harmonizationPeriod = c(2020, 2020),
+                                            harmonization = "absoluteChanges")
+  )
+  expect_false(any(grepl("Check failed", conditions$conditions)))
+  x <- result$x
+
+  regionTotal <- dimSums(toolAggregateWoodHarvest(x[, c(2025, 2030), ]), 1.2)
+  forestTotal <- dimSums(regionTotal[, , c("primf", "secdf", "pltns")], 3)
+  otherTotal <- dimSums(regionTotal[, , c("primn", "secdn")], 3)
+
+  # both cover global totals equal their own un-floored global expectations
+  expect_equal(as.vector(dimSums(forestTotal, 1)[, 2025, ]), 6, tolerance = 10^-9)
+  expect_equal(as.vector(dimSums(forestTotal, 1)[, 2030, ]), 6, tolerance = 10^-9)
+  expect_equal(as.vector(dimSums(otherTotal, 1)[, 2025, ]), 15, tolerance = 10^-9)
+  expect_equal(as.vector(dimSums(otherTotal, 1)[, 2030, ]), 15, tolerance = 10^-9)
+
+  # the loss-making region stays at zero, the growing region keeps its floored
+  # and scaled total, its region partner stays parallel
+  expect_equal(as.vector(otherTotal["regone", 2025, ]), 0)
+  expect_equal(as.vector(otherTotal["regtwo", 2025, ]), 15, tolerance = 10^-9)
+  expect_equal(as.vector(forestTotal["regone", 2025, ]), 3, tolerance = 10^-9)
+  expect_equal(as.vector(forestTotal["regtwo", 2025, ]), 3, tolerance = 10^-9)
+  expect_true(min(x) >= 0)
+})
