@@ -519,6 +519,99 @@ test_that("the global fallback is scoped to the offending crop group and year ta
   expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
 })
 
+test_that("stranded bioh of clusters with zero harvest area is redistributed", {
+  # identical to the first test, except reg.one loses its harmonized harvest
+  # area after 2020 while keeping positive bioh: rates x land cannot host it
+  # where the land vanished, so the bioh of reg.one moves to
+  # reg.two, the only cluster that still has harvest area
+  xInput <- new.magpie(c("reg.one", "reg.two"), years = c(2020, 2025, 2030), names = nonlandItems, fill = 0)
+  xInput["reg.one", 2020, ] <- c(2000, 1500, 1, 1, 3, 1, 400)
+  xInput["reg.one", 2025, ] <- c(500, 1600, 1, 1, 2, 2, 500)
+  xInput["reg.one", 2030, ] <- c(500, 1600, 1, 1, 2, 2, 450)
+  xInput["reg.two", 2020, ] <- c(1000, 1000, 1, 1, 1, 1, 500)
+  xInput["reg.two", 2025, ] <- c(1200, 1000, 1, 1, 1, 1, 600)
+  xInput["reg.two", 2030, ] <- c(1200, 1000, 1, 1, 1, 1, 550)
+  attr(xInput, "geometry") <- "point"
+  attr(xInput, "crs") <- "EPSG:4326"
+  getSets(xInput) <- c("region", "id", "year", "category", "data")
+
+  xTarget <- new.magpie(c("reg.one", "reg.two"), years = c(2010, 2020), names = nonlandItems, fill = 0)
+  xTarget["reg.one", 2010, ] <- c(1000, 1500, 1, 1, 2, 2, 500)
+  xTarget["reg.one", 2020, ] <- c(1000, 1500, 1, 1, 2, 2, 500)
+  xTarget["reg.two", 2010, ] <- c(1000, 1000, 1, 1, 1, 1, 400)
+  xTarget["reg.two", 2020, ] <- c(1000, 1000, 1, 1, 1, 1, 400)
+  getSets(xTarget) <- c("region", "id", "year", "category", "data")
+
+  landTarget <- new.magpie(c("reg.one", "reg.two"), years = c(2010, 2020),
+                           names = c("c3ann", "pastr"), fill = 100)
+  landHarmonized <- new.magpie(c("reg.one", "reg.two"), years = c(2010, 2020, 2025, 2030),
+                               names = c("c3ann", "pastr"), fill = 100)
+  landHarmonized["reg.two", 2025, "c3ann"] <- 0
+
+  harvestArea <- new.magpie(c("reg.one", "reg.two"), years = c(2010, 2020, 2025, 2030),
+                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf"), fill = 1)
+  harvestArea["reg.one", c(2025, 2030), ] <- 0
+  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = landTarget,
+             LandHarmonized = landHarmonized,
+             WoodHarvestAreaHarmonized = harvestArea,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+
+  conditions <- captureConditions(
+    result <- calcNonlandHarmonized(input = "magpie", target = "luh3",
+                                    harmonizationPeriod = c(2020, 2020),
+                                    harmonization = "absoluteChanges")
+  )
+  # the total keeping check for bioh passes by construction, only the
+  # implausible fertilizer rate of the unchanged fixture is reported
+  expect_false(any(grepl("Check failed: Adapting bioh", conditions$conditions)))
+  expect_true(any(grepl("Fertilizer application", conditions$conditions)))
+  # the report covers the two stranded cluster years of reg.one (2025/2030)
+  # with 1600 kg C yr-1 each, 3200 of the 16600 kg C yr-1 of all cluster years
+  report <- grep("redistributed stranded bioh", conditions$conditions, value = TRUE)
+  expect_equal(length(report), 1)
+  expect_true(grepl("3200 kg C yr-1 \\(19\\.3%", report))
+  expect_true(grepl("from 2 of 8 cluster years \\(25%\\)", report))
+  x <- result$x
+
+  # the stranded clusters end up exactly at zero
+  expect_equal(as.vector(x["reg.one", c(2025, 2030), paste0("bioh.", c("primf", "secmf"))]),
+               rep(0, 4))
+
+  # reg.two hosts the harmonizer bioh of both clusters: reg.one keeps 1600 kg C
+  # in 2025/2030 (primf clamped to 0, secmf 1600), which has no receiver in its
+  # region and moves over the global pool to reg.two (1200 + 1000), normalization
+  # then rescales the total of 3800 onto the calculated 1200/1000 split
+  expect_equal(as.vector(x["reg.two", 2025, c("bioh.primf", "bioh.secmf")]),
+               c(1200, 1000) * 3800 / 2200)
+  expect_equal(as.vector(x["reg.two", 2030, c("bioh.primf", "bioh.secmf")]),
+               c(1200, 1000) * 3800 / 2200)
+
+  # global totals equal the pre-redistribution harmonizer totals
+  expect_equal(as.numeric(dimSums(x[, 2025, "bioh"], c(1, 2, 3))), 1600 + 2200)
+  expect_equal(as.numeric(dimSums(x[, 2030, "bioh"], c(1, 2, 3))), 1600 + 2200)
+
+  # everything besides bioh and the harvest area stays as in the first test
+  expect_equal(as.vector(x["reg.one", 2025, "fertilizer"]), 2900)
+  expect_equal(as.vector(x["reg.two", 2025, "fertilizer"]), 0)
+  expect_equal(as.vector(x["reg.one", 2030, "fertilizer"]), 1000)
+  expect_equal(as.vector(x["reg.two", 2030, "fertilizer"]), 900)
+  expect_equal(as.vector(x["reg.one", 2025, c("harvest_weight_type.roundwood",
+                                              "harvest_weight_type.fuelwood")]), c(1, 3))
+  expect_equal(as.vector(x["reg.one", 2025, "wood_harvest_area.primf"]), 0)
+  expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
+  expect_true(all(is.finite(x)))
+  expect_true(all(x >= 0))
+})
+
 test_that("toolCapFertilizerKgPerHa redistributes within the region", {
   fert <- new.magpie(c("regone.1", "regone.2", "regtwo.1"), years = 2025,
                      names = "fertilizer.c3ann", fill = 0)
