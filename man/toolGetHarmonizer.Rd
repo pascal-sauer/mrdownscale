@@ -4,11 +4,14 @@
 \alias{toolGetHarmonizer}
 \title{toolGetHarmonizer}
 \usage{
-toolGetHarmonizer(harmonizerName)
+toolGetHarmonizer(harmonizerName, constantTotal)
 }
 \arguments{
 \item{harmonizerName}{name of a harmonizer function, currently offset, fade, fadeForest,
 absoluteChanges}
+
+\item{constantTotal}{TRUE for area conservative land data, FALSE otherwise, only
+used by the absoluteChanges harmonizer, ignored by the others}
 }
 \value{
 harmonizer function

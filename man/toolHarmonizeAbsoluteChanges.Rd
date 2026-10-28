@@ -4,7 +4,12 @@
 \alias{toolHarmonizeAbsoluteChanges}
 \title{toolHarmonizeAbsoluteChanges}
 \usage{
-toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod)
+toolHarmonizeAbsoluteChanges(
+  xInput,
+  xTarget,
+  harmonizationPeriod,
+  constantTotal
+)
 }
 \arguments{
 \item{xInput}{input data as magpie object}
@@ -14,6 +19,8 @@ toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod)
 \item{harmonizationPeriod}{Two identical integer values, the year the
 absolute changes of the input data are applied to, must be present in both
 input and target data}
+
+\item{constantTotal}{TRUE if the total area of each cell is constant over time}
 }
 \value{
 harmonized data set as magpie object with data from target for years
@@ -41,6 +48,9 @@ primf and primn cannot regrow, so if they were scaled down to compensate
 that would persist in all later timesteps (toolReplaceExpansion caps prim
 areas at previous timestep). Hence they are only scaled down once all other
 variables in their group were scaled down to zero first.
+This group compensation and constant total area applies only to data whose
+total area is constant (constantTotal = TRUE). For constantTotal = FALSE data
+negative values are simply clamped to zero.
 }
 \author{
 Pascal Sauer
