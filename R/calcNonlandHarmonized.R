@@ -7,11 +7,14 @@
 #' by calculating kg C per mega hectare for input and target data and
 #' harmonizing it. This is then multiplied by the harmonized wood harvest area
 #' and scaled so the total harmonized bioh is reached. For absoluteChanges the
-#' regional and global bioh totals stay parallel to the input (constant offset)
-#' after the harmonization year: where zero clamping inflated a region's total
-#' above its expectation it is rescaled back, the per-cell kg C per mega
-#' hectare times harvest area split only deciding which cells can host how
-#' much. bioh of clusters
+#' regional forest and other land cover totals of bioh stay parallel to the
+#' input (constant offset) after the harmonization year: where zero clamping
+#' inflated a region's total above its expectation it is rescaled back, the
+#' per-cell kg C per mega hectare times harvest area split only deciding which
+#' cells can host how much. Because that per-cell split moves bioh between the
+#' covers, a final cover-granular rescale restores the parallel total of each
+#' cover, falling back to a global factor where a region expects bioh of a
+#' cover but has no cells left to hold it. bioh of clusters
 #' whose harmonized harvest area is zero is redistributed to clusters with
 #' harvest area in the same region, falling back to the global pool
 #' (toolRedistributeBioh).
@@ -152,6 +155,32 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
                      dimSums(biohAdapted, 3),
                      10^-4, "Adapting bioh to harmonized wood harvest area does not change total bioh")
 
+  if (harmonization == "absoluteChanges") {
+    # the renormalization re-split the bioh of every cell by harvest area,
+    # moving it between the forest and other land covers, restore each region's
+    # cover parallelism, keeping the per-cell item split of the renormalized data
+    covers <- list(forest = c("bioh.primf", "bioh.secmf", "bioh.secyf", "bioh.pltns"),
+                   other = c("bioh.primn", "bioh.secnf"))
+    expectedCoverBioh <- list()
+    for (cover in names(covers)) {
+      items <- intersect(covers[[cover]], getItems(biohAdapted, 3))
+      if (length(items) == 0) {
+        next
+      }
+      inputCoverBioh <- dimSums(xInput[, c(hp[1], yearsAfterHy), items], c(1.2, 3))
+      expected <- setYears(dimSums(xTarget[, hp[1], items], c(1.2, 3)), NULL) +
+        (inputCoverBioh[, yearsAfterHy, ] - setYears(inputCoverBioh[, hp[1], ], NULL))
+      expected[expected < 0] <- 0
+      expectedCoverBioh[[cover]] <- expected
+      coverBioh <- biohAdapted[, yearsAfterHy, items]
+      msgCover <- paste0("Regions with expected ", cover, " bioh have harvest area left to hold it")
+      coverTotal <- toolRescaleRegionTotals(dimSums(coverBioh, 3), expected, msgCover)
+      share <- coverBioh / dimSums(coverBioh, 3)
+      share[is.na(share)] <- 0
+      biohAdapted[, yearsAfterHy, items] <- share * coverTotal
+    }
+  }
+
   out[, , "bioh"] <- biohAdapted
   out <- mbind(out, harvestArea)
   out <- out[, , getItems(kgCPerMhaTarget, 3), invert = TRUE]
@@ -184,10 +213,19 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
     fertilizerOutput <- dimSums(toolFertilizerTg(out[, yearsAfterHy, "fertilizer"], landHarmonizedMha), 1)
     toolExpectLessDiff(fertilizerOutput, expectedGlobalTg, 10^-5,
                        "Global fertilizer totals are parallel to input after the harmonization year")
-    regionBiohOut <- dimSums(out[, yearsAfterHy, "bioh"], c(1.2, 3))
-    toolExpectLessDiff(regionBiohOut, expectedRegionBioh, 10^-5,
-                       "Regional bioh totals are parallel to input after the harmonization year")
-    toolExpectLessDiff(dimSums(regionBiohOut, 1), dimSums(expectedRegionBioh, 1), 10^-5,
+    outCoverTotals <- list()
+    for (cover in names(covers)) {
+      items <- intersect(covers[[cover]], getItems(out, 3))
+      if (length(items) == 0) {
+        next
+      }
+      outCoverTotals[[cover]] <- dimSums(out[, yearsAfterHy, items], c(1.2, 3))
+      toolExpectLessDiff(outCoverTotals[[cover]], expectedCoverBioh[[cover]], 10^-5,
+                         paste0("Regional ", cover, " bioh totals are parallel to input ",
+                                "after the harmonization year"))
+    }
+    toolExpectLessDiff(dimSums(Reduce(`+`, outCoverTotals), 1),
+                       dimSums(Reduce(`+`, expectedCoverBioh), 1), 10^-5,
                        "Global bioh totals are parallel to input after the harmonization year")
   } else {
     years <- getYears(out, TRUE)[getYears(out, TRUE) >= hp[2]]

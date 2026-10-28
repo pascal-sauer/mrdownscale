@@ -809,7 +809,7 @@ test_that("absoluteChanges moves stranded bioh over the global pool, failing the
                                     harmonizationPeriod = c(2020, 2020),
                                     harmonization = "absoluteChanges")
   )
-  expect_true(any(grepl("Check failed.*Regional bioh totals are parallel", conditions$conditions)))
+  expect_true(any(grepl("Check failed.*Regional forest bioh totals are parallel", conditions$conditions)))
   expect_false(any(grepl("Check failed.*Global bioh totals are parallel", conditions$conditions)))
   x <- result$x
 
@@ -819,6 +819,90 @@ test_that("absoluteChanges moves stranded bioh over the global pool, failing the
   expect_equal(as.numeric(biohRegion["regtwo", , ]), rep(2000 + 1100, 2))
   expect_equal(as.numeric(dimSums(x[, 2025, "bioh"], c(1, 2, 3))), 3100)
   expect_equal(as.numeric(dimSums(x[, 2030, "bioh"], c(1, 2, 3))), 3100)
+})
+
+test_that("absoluteChanges keeps regional forest and other land cover totals of bioh parallel to the input", {
+  # bioh item covers: forest = primf, secmf, other = secnf. regone.1 grows its
+  # forest bioh while its other land bioh collapses from 500 to 1 far below its
+  # target anchor of 300, so the raw absolute change clamps to zero inside one
+  # cover. The per-cell renormalization onto kg C per Mha times harvest area
+  # then re-splits the cell totals between the covers, which the final
+  # cover-granular rescale must undo, keeping each region's cover total at its
+  # floored target total plus regional input cover delta
+  cells <- c("regone.1", "regone.2", "regtwo.1")
+  coverItems <- c("bioh.primf", "bioh.secmf", "bioh.secnf")
+  items <- c(nonlandItems, "bioh.secnf", "wood_harvest_area.secnf")
+
+  xInput <- new.magpie(cells, years = c(2020, 2025), names = items, fill = 0)
+  xInput[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xInput["regone.1", , "bioh.secnf"] <- 500
+  xInput["regone.1", 2025, "bioh.secnf"] <- 1
+  xInput["regone.1", 2025, "bioh.secmf"] <- 3000
+  xInput["regone.2", , "bioh.secnf"] <- 100
+  xInput["regone.2", 2025, "bioh.secnf"] <- 300
+  xInput["regtwo.1", , "bioh.secnf"] <- 100
+  xInput[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf",
+               "wood_harvest_area.secnf")] <- 1
+  xInput[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xInput[, , "fertilizer.c3ann"] <- 100
+  attr(xInput, "geometry") <- "point"
+  attr(xInput, "crs") <- "EPSG:4326"
+  getSets(xInput) <- c("region", "id", "year", "category", "data")
+
+  xTarget <- new.magpie(cells, years = c(2010, 2020), names = items, fill = 0)
+  xTarget[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xTarget["regone.1", , "bioh.secnf"] <- 300
+  xTarget["regone.2", , "bioh.secnf"] <- 100
+  xTarget["regtwo.1", , "bioh.secnf"] <- 100
+  xTarget[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf",
+                "wood_harvest_area.secnf")] <- 1
+  xTarget[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xTarget[, , "fertilizer.c3ann"] <- 100
+  getSets(xTarget) <- c("region", "id", "year", "category", "data")
+
+  landTarget <- new.magpie(cells, years = c(2010, 2020), names = "c3ann", fill = 100)
+  landHarmonized <- new.magpie(cells, years = c(2010, 2020, 2025), names = "c3ann", fill = 100)
+
+  # both covers keep 1 Mha yr-1 of harvest area everywhere
+  harvestArea <- new.magpie(cells, years = c(2010, 2020, 2025),
+                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf",
+                                      "wood_harvest_area.secnf"), fill = 1)
+  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = landTarget,
+             LandHarmonized = landHarmonized,
+             WoodHarvestAreaHarmonized = harvestArea,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+
+  conditions <- captureConditions(
+    result <- calcNonlandHarmonized(input = "magpie", target = "luh3",
+                                    harmonizationPeriod = c(2020, 2020),
+                                    harmonization = "absoluteChanges")
+  )
+  expect_false(any(grepl("Check failed", conditions$conditions)))
+  x <- result$x
+
+  # floored target cover totals plus regional input cover deltas: forest 4000 +
+  # 2000 = 6000 in regone and 2000 in regtwo, other land 400 - 299 = 101 in
+  # regone and 100 in regtwo, also globally
+  forest <- dimSums(x[, 2025, c("bioh.primf", "bioh.secmf")], c(1.2, 3))
+  other <- dimSums(x[, 2025, "bioh.secnf"], c(1.2, 3))
+  expect_equal(as.vector(forest["regone", , ]), 6000, tolerance = 10^-6)
+  expect_equal(as.vector(forest["regtwo", , ]), 2000, tolerance = 10^-6)
+  expect_equal(as.vector(other["regone", , ]), 101, tolerance = 10^-6)
+  expect_equal(as.vector(other["regtwo", , ]), 100, tolerance = 10^-6)
+  expect_equal(as.vector(dimSums(forest, 1)[, 2025, ]), 8000, tolerance = 10^-6)
+  expect_equal(as.vector(dimSums(other, 1)[, 2025, ]), 201, tolerance = 10^-6)
+
+  # before and in the harmonization year the target is still reproduced exactly
+  expect_true(max(abs(x[, c(2010, 2020), coverItems] - xTarget[, c(2010, 2020), coverItems])) < 10^-5)
 })
 
 test_that("toolCapFertilizerKgPerHa redistributes within the region", {
