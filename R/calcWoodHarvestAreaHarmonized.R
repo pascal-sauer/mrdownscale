@@ -100,7 +100,9 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
       spareTotal <- dimSums(spare, 3)
       gain <- spare * ((target - dimSums(out, 3)) / spareTotal)
       gain[is.na(gain)] <- 0
-      return(out + gain)
+      # the floating point noise from the proportional fill must not turn into
+      # negative harvest area, it crashes downstream consumers of the output
+      return(pmax(out + gain, 0))
     }
 
     for (cover in names(covers)) {
