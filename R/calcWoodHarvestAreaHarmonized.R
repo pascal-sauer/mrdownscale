@@ -11,7 +11,10 @@
 #' harvest area stay parallel to the input (constant offset) after the
 #' harmonization year: the regional expectations are floored at zero and scaled
 #' onto the global expectation, so a region expecting a loss receives nothing
-#' while the remaining regions keep the global total parallel. The prim harvest
+#' while the remaining regions keep the global total parallel. If the global
+#' expectation of a cover itself turns negative, it is floored to zero and the
+#' clipped loss is charged to the other cover, keeping the global total over all
+#' covers parallel. The prim harvest
 #' stays land-derived, the secd/pltns harvest of a cover absorbs the difference
 #' within the region and the global pool of its own cover, falling back to the
 #' headroom of the other cover, region first and then globally, and finally
@@ -85,6 +88,7 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
     covers <- list(forest = list(prim = "primf", secd = c("secdf", "pltns")),
                    other = list(prim = "primn", secd = "secdn"))
     coverExpected <- list()
+    coverGlobal <- list()
     coverItems <- list()
     coverTotal <- list()
     coverCap <- list()
@@ -121,8 +125,24 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
       positiveTotal <- dimSums(pmax(expected, 0), 1)
       scale <- pmax(globalExpected, 0) / positiveTotal
       scale[is.na(scale)] <- 0
-      expected <- pmax(expected, 0) * scale
-      requiredSecd <- expected - dimSums(dimSums(primHarv[, , prim], 1.2), 3)
+      coverExpected[[cover]] <- pmax(expected, 0) * scale
+      coverGlobal[[cover]] <- globalExpected
+    }
+
+    # the negative global cover expectation floored to zero is charged to the
+    # other cover, so the global total over all covers stays input parallel
+    globalTotal <- coverGlobal$forest + coverGlobal$other
+    positiveGlobalTotal <- pmax(coverGlobal$forest, 0) + pmax(coverGlobal$other, 0)
+    balanceFactor <- pmax(globalTotal, 0) / positiveGlobalTotal
+    balanceFactor[is.na(balanceFactor)] <- 1
+    coverGlobalBalanced <- pmax(globalTotal, 0)
+    for (cover in names(covers)) {
+      coverExpected[[cover]] <- coverExpected[[cover]] * balanceFactor
+    }
+
+    for (cover in names(covers)) {
+      secd <- covers[[cover]]$secd
+      requiredSecd <- coverExpected[[cover]] - dimSums(dimSums(primHarv[, , covers[[cover]]$prim], 1.2), 3)
       requiredSecd[requiredSecd < 0] <- 0
 
       # the zero clamping of the raw absolute changes and an over-achieving prim
@@ -143,7 +163,6 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
                                                      dimSums(maxHarv[, , secd], 3), msgAbsorb)
       coverCap[[cover]] <- dimSums(maxHarv[, , secd], 3)
       coverItems[[cover]] <- secdHarv
-      coverExpected[[cover]] <- expected
     }
 
     # harvest of one cover that neither the cover's regional nor its global pool
@@ -243,7 +262,7 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
       toolExpectLessDiff(outCoverTotals[[cover]], coverExpected[[cover]], 10^-5, message)
     }
     toolExpectLessDiff(dimSums(outCoverTotals$forest + outCoverTotals$other, 1),
-                       dimSums(coverExpected$forest + coverExpected$other, 1), 10^-5,
+                       coverGlobalBalanced, 10^-5,
                        "Global wood harvest area is parallel to input after the harmonization year")
   }
   toolCheckWoodHarvestArea(out, landHarmonized, harmonizationPeriod[1])
