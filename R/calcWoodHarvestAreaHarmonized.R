@@ -7,13 +7,15 @@
 #' harmonized land data. If secondary harvest exceeds the available
 #' secondary land, the excess is shifted to the other secondary land
 #' (secdf to secdn and vice versa). Remaining excess harvest area is reported.
-#' For absoluteChanges, the regional forest and other land cover totals of the
+#' For absoluteChanges, the global forest and other land cover totals of the
 #' harvest area stay parallel to the input (constant offset) after the
-#' harmonization year: the prim harvest stays land-derived, the secd/pltns
-#' harvest of a cover absorbs the difference within the region and the global
-#' pool of its own cover, falling back to the headroom of the other cover,
-#' region first and then globally, and finally reporting the excess where even
-#' that cannot host it.
+#' harmonization year: the regional expectations are floored at zero and scaled
+#' onto the global expectation, so a region expecting a loss receives nothing
+#' while the remaining regions keep the global total parallel. The prim harvest
+#' stays land-derived, the secd/pltns harvest of a cover absorbs the difference
+#' within the region and the global pool of its own cover, falling back to the
+#' headroom of the other cover, region first and then globally, and finally
+#' reporting the excess where even that cannot host it.
 #'
 #' @inheritParams calcNonlandInput
 #' @param target name of a target dataset, see \code{\link{calcLandTarget}}
@@ -112,7 +114,14 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
       targetCover <- dimSums(targetRegion[, , c(prim, secd)], 3)
       expected <- setYears(targetCover[, hp, ], NULL) +
         (inputCover[, futureYears, ] - setYears(inputCover[, hp, ], NULL))
-      expected[expected < 0] <- 0
+      # global first allocation: floor the regional expectations at zero and
+      # scale the rest onto the raw global expectation, keeping the global cover
+      # total input parallel even where regional expectations had to be floored
+      globalExpected <- dimSums(expected, 1)
+      positiveTotal <- dimSums(pmax(expected, 0), 1)
+      scale <- pmax(globalExpected, 0) / positiveTotal
+      scale[is.na(scale)] <- 0
+      expected <- pmax(expected, 0) * scale
       requiredSecd <- expected - dimSums(dimSums(primHarv[, , prim], 1.2), 3)
       requiredSecd[requiredSecd < 0] <- 0
 
