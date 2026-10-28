@@ -16,7 +16,10 @@
 #' cover, floored regional cover expectations being scaled onto the global
 #' expectation, so a region expecting a loss receives nothing while the rest
 #' keep the global cover total parallel, falling back to a global factor where
-#' a region expects bioh of a cover but has no cells left to hold it. bioh of
+#' a region expects bioh of a cover but has no cells left to hold it. If the
+#' global expectation of a cover itself turns negative, it is floored to zero
+#' and the clipped loss is charged to the other covers by uniformly scaling
+#' their targets, keeping the global total over all covers parallel. bioh of
 #' clusters whose harmonized harvest area is zero is redistributed to clusters
 #' with harvest area in the same region, falling back to the global pool
 #' (toolRedistributeBioh).
@@ -164,6 +167,8 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
     covers <- list(forest = c("bioh.primf", "bioh.secmf", "bioh.secyf", "bioh.pltns"),
                    other = c("bioh.primn", "bioh.secnf"))
     expectedCoverBioh <- list()
+    coverGlobal <- list()
+    coverItems <- list()
     for (cover in names(covers)) {
       items <- intersect(covers[[cover]], getItems(biohAdapted, 3))
       if (length(items) == 0) {
@@ -179,11 +184,27 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
       positiveTotal <- dimSums(pmax(expected, 0), 1)
       scale <- pmax(globalExpected, 0) / positiveTotal
       scale[is.na(scale)] <- 0
-      expected <- pmax(expected, 0) * scale
-      expectedCoverBioh[[cover]] <- expected
+      expectedCoverBioh[[cover]] <- pmax(expected, 0) * scale
+      coverGlobal[[cover]] <- globalExpected
+      coverItems[[cover]] <- items
+    }
+
+    # the negative global cover expectation floored to zero is charged to the
+    # other covers, so the global total over all covers stays input parallel
+    globalTotal <- Reduce(`+`, coverGlobal)
+    positiveGlobalTotal <- Reduce(`+`, lapply(coverGlobal, function(globalExpected) pmax(globalExpected, 0)))
+    balanceFactor <- pmax(globalTotal, 0) / positiveGlobalTotal
+    balanceFactor[is.na(balanceFactor)] <- 1
+    coverGlobalBalanced <- pmax(globalTotal, 0)
+    for (cover in names(expectedCoverBioh)) {
+      expectedCoverBioh[[cover]] <- expectedCoverBioh[[cover]] * balanceFactor
+    }
+
+    for (cover in names(expectedCoverBioh)) {
+      items <- coverItems[[cover]]
       coverBioh <- biohAdapted[, yearsAfterHy, items]
       msgCover <- paste0("Regions with expected ", cover, " bioh have harvest area left to hold it")
-      coverTotal <- toolRescaleRegionTotals(dimSums(coverBioh, 3), expected, msgCover)
+      coverTotal <- toolRescaleRegionTotals(dimSums(coverBioh, 3), expectedCoverBioh[[cover]], msgCover)
       share <- coverBioh / dimSums(coverBioh, 3)
       share[is.na(share)] <- 0
       biohAdapted[, yearsAfterHy, items] <- share * coverTotal
@@ -234,7 +255,7 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
                                 "after the harmonization year"))
     }
     toolExpectLessDiff(dimSums(Reduce(`+`, outCoverTotals), 1),
-                       dimSums(Reduce(`+`, expectedCoverBioh), 1), 10^-5,
+                       coverGlobalBalanced, 10^-5,
                        "Global bioh totals are parallel to input after the harmonization year")
   } else {
     years <- getYears(out, TRUE)[getYears(out, TRUE) >= hp[2]]
