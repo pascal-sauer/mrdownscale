@@ -905,6 +905,99 @@ test_that("absoluteChanges keeps regional forest and other land cover totals of 
   expect_true(max(abs(x[, c(2010, 2020), coverItems] - xTarget[, c(2010, 2020), coverItems])) < 10^-5)
 })
 
+test_that("absoluteChanges allocates the global other land cover expectation first when a regional one is negative", {
+  # regone's input other land bioh collapses from 300 to 1 while its target
+  # anchor in the harmonization year is only 100, so its un-floored other land
+  # expectation turns negative while regtwo grows: flooring the regional
+  # expectations per region would drop regone's negative delta and lift the
+  # global other land total above the raw global expectation, so the global
+  # first allocation gives regone nothing and scales regtwo down to keep the
+  # global cover total exactly parallel to the un-floored expectation
+  cells <- c("regone.1", "regtwo.1")
+  coverItems <- c("bioh.primf", "bioh.secmf", "bioh.secnf")
+  items <- c(nonlandItems, "bioh.secnf", "wood_harvest_area.secnf")
+
+  # the forest bioh stays flat at its target anchor in both regions
+  xInput <- new.magpie(cells, years = c(2020, 2025, 2030), names = items, fill = 0)
+  xInput[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xInput["regone.1", , "bioh.secnf"] <- c(300, 1, 1)
+  xInput["regtwo.1", , "bioh.secnf"] <- c(100, 400, 600)
+  xInput[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf",
+               "wood_harvest_area.secnf")] <- 1
+  xInput[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xInput[, , "fertilizer.c3ann"] <- 100
+  attr(xInput, "geometry") <- "point"
+  attr(xInput, "crs") <- "EPSG:4326"
+  getSets(xInput) <- c("region", "id", "year", "category", "data")
+
+  xTarget <- new.magpie(cells, years = c(2010, 2020), names = items, fill = 0)
+  xTarget[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xTarget["regone.1", , "bioh.secnf"] <- 100
+  xTarget["regtwo.1", , "bioh.secnf"] <- 100
+  xTarget[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf",
+                "wood_harvest_area.secnf")] <- 1
+  xTarget[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xTarget[, , "fertilizer.c3ann"] <- 100
+  getSets(xTarget) <- c("region", "id", "year", "category", "data")
+
+  landTarget <- new.magpie(cells, years = c(2010, 2020), names = "c3ann", fill = 100)
+  landHarmonized <- new.magpie(cells, years = c(2010, 2020, 2025, 2030), names = "c3ann", fill = 100)
+
+  # both covers keep 1 Mha yr-1 of harvest area everywhere
+  harvestArea <- new.magpie(cells, years = c(2010, 2020, 2025, 2030),
+                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf",
+                                      "wood_harvest_area.secnf"), fill = 1)
+  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = landTarget,
+             LandHarmonized = landHarmonized,
+             WoodHarvestAreaHarmonized = harvestArea,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+
+  conditions <- captureConditions(
+    result <- calcNonlandHarmonized(input = "magpie", target = "luh3",
+                                    harmonizationPeriod = c(2020, 2020),
+                                    harmonization = "absoluteChanges")
+  )
+  expect_false(any(grepl("Check failed", conditions$conditions)))
+  x <- result$x
+
+  # the un-floored other land expectations are regone 100 - 299 = -199 in both
+  # future years and regtwo 400 in 2025 and 600 in 2030, giving the raw global
+  # expectations 201 and 401
+  other <- dimSums(x[, c(2025, 2030), "bioh.secnf"], c(1.2, 3))
+
+  # the global other land total equals the un-floored raw global expectation
+  expect_equal(as.vector(dimSums(other, 1)[, 2025, ]), 201, tolerance = 10^-9)
+  expect_equal(as.vector(dimSums(other, 1)[, 2030, ]), 401, tolerance = 10^-9)
+
+  # the loss-making region gets nothing of the cover
+  expect_equal(as.vector(other["regone", 2025, ]), 0)
+  expect_equal(as.vector(other["regone", 2030, ]), 0)
+
+  # the growing region carries the whole global expectation, scaled below its own
+  expect_equal(as.vector(other["regtwo", 2025, ]), 201, tolerance = 10^-9)
+  expect_equal(as.vector(other["regtwo", 2030, ]), 401, tolerance = 10^-9)
+
+  # the forest cover with its unharmed expectations stays exactly the same
+  forest <- dimSums(x[, c(2025, 2030), c("bioh.primf", "bioh.secmf")], c(1.2, 3))
+  expect_equal(as.vector(forest["regone", 2025, ]), 2000, tolerance = 10^-9)
+  expect_equal(as.vector(forest["regtwo", 2030, ]), 2000, tolerance = 10^-9)
+  expect_equal(as.vector(dimSums(forest, 1)[, 2025, ]), 4000, tolerance = 10^-9)
+  expect_equal(as.vector(dimSums(forest, 1)[, 2030, ]), 4000, tolerance = 10^-9)
+
+  # before and in the harmonization year the target is still reproduced exactly
+  expect_true(max(abs(x[, c(2010, 2020), coverItems] - xTarget[, c(2010, 2020), coverItems])) < 10^-5)
+  expect_true(min(x) >= 0)
+})
+
 test_that("toolCapFertilizerKgPerHa redistributes within the region", {
   fert <- new.magpie(c("regone.1", "regone.2", "regtwo.1"), years = 2025,
                      names = "fertilizer.c3ann", fill = 0)

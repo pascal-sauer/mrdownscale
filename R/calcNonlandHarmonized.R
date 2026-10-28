@@ -13,10 +13,12 @@
 #' per-cell kg C per mega hectare times harvest area split only deciding which
 #' cells can host how much. Because that per-cell split moves bioh between the
 #' covers, a final cover-granular rescale restores the parallel total of each
-#' cover, falling back to a global factor where a region expects bioh of a
-#' cover but has no cells left to hold it. bioh of clusters
-#' whose harmonized harvest area is zero is redistributed to clusters with
-#' harvest area in the same region, falling back to the global pool
+#' cover, floored regional cover expectations being scaled onto the global
+#' expectation, so a region expecting a loss receives nothing while the rest
+#' keep the global cover total parallel, falling back to a global factor where
+#' a region expects bioh of a cover but has no cells left to hold it. bioh of
+#' clusters whose harmonized harvest area is zero is redistributed to clusters
+#' with harvest area in the same region, falling back to the global pool
 #' (toolRedistributeBioh).
 #' Harmonize absolute fertilizer in Tg yr-1, then convert to fertilizer rate
 #' in kg ha-1 yr-1. For absoluteChanges the tonnage changes of the input since
@@ -170,7 +172,14 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
       inputCoverBioh <- dimSums(xInput[, c(hp[1], yearsAfterHy), items], c(1.2, 3))
       expected <- setYears(dimSums(xTarget[, hp[1], items], c(1.2, 3)), NULL) +
         (inputCoverBioh[, yearsAfterHy, ] - setYears(inputCoverBioh[, hp[1], ], NULL))
-      expected[expected < 0] <- 0
+      # global first allocation: floor the regional cover expectations at zero
+      # and scale the rest onto the raw global expectation, keeping the global
+      # cover total parallel even where regional expectations had to be floored
+      globalExpected <- dimSums(expected, 1)
+      positiveTotal <- dimSums(pmax(expected, 0), 1)
+      scale <- pmax(globalExpected, 0) / positiveTotal
+      scale[is.na(scale)] <- 0
+      expected <- pmax(expected, 0) * scale
       expectedCoverBioh[[cover]] <- expected
       coverBioh <- biohAdapted[, yearsAfterHy, items]
       msgCover <- paste0("Regions with expected ", cover, " bioh have harvest area left to hold it")
