@@ -337,3 +337,51 @@ test_that("fade harmonization keeps its existing behavior", {
   expect_equal(as.vector(x[, 2010, harvestItems]), as.vector(xTarget[, 2010, harvestItems]))
   expect_true(min(x) >= 0)
 })
+
+test_that("absoluteChanges can move cover harvest into cells without own harvest of that cover", {
+  # regone.2 has no forest harvest at all but forest land, while regone.1's
+  # forest excess exceeds its own cap: the region absorbs the excess into
+  # regone.2's forest headroom, so the cover total must be filled onto an item
+  # split of a cell that held nothing of that cover before
+  years <- c(2010, 2020, 2025, 2030)
+  land <- makeLand(years, list(
+    regone.1 = list(primf = 20, primn = 5, secdf = 5, secdn = 1, pltns = 1),
+    regone.2 = list(primf = 20, primn = 5, secdf = 10, secdn = 1, pltns = 5)
+  ))
+
+  xTarget <- makeHarvest(c(2010, 2020), list(
+    regone.1 = list(primf = 0, primn = 0, secyf = 2, secmf = 0, pltns = 1, secnf = 0),
+    regone.2 = list(primf = 0, primn = 0, secyf = 0, secmf = 0, pltns = 0, secnf = 0)
+  ))
+  xInput <- makeHarvest(c(2020, 2025, 2030), list(
+    regone.1 = list(secyf = c(2, 20, 20), pltns = 1, secnf = 0),
+    regone.2 = list(secnf = 0)
+  ))
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             LandHarmonized = land,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+  conditions <- captureConditions(
+    result <- calcWoodHarvestAreaHarmonized(input = "magpie", target = "luh3",
+                                            harmonizationPeriod = c(2020, 2020),
+                                            harmonization = "absoluteChanges")
+  )
+  expect_false(any(grepl("Check failed", conditions$conditions)))
+  x <- result$x
+
+  # the forest cover stays region parallel: regone's 21 Mha yr-1 expectation
+  # fits exactly into the region's 21 Mha of forest land, regone.1 sitting on
+  # its 6 Mha cap and regone.2 filling its 15 Mha with nothing to start from
+  aggOut <- toolAggregateWoodHarvest(x[, c(2025, 2030), ])
+  expect_equal(as.vector(dimSums(dimSums(aggOut, 1.2)[, , c("primf", "secdf", "pltns")], 3)["regone", 2025, ]),
+               21, tolerance = 10^-8)
+  expect_equal(as.vector(aggOut["regone.1", 2025, c("secdf", "pltns")]), c(5, 1))
+  expect_equal(as.vector(aggOut["regone.2", 2025, c("secdf", "pltns")]), c(10, 5))
+  expect_true(min(x) >= 0)
+})
