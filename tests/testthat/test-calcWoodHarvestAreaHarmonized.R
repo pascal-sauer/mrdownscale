@@ -385,3 +385,69 @@ test_that("absoluteChanges can move cover harvest into cells without own harvest
   expect_equal(as.vector(aggOut["regone.2", 2025, c("secdf", "pltns")]), c(10, 5))
   expect_true(min(x) >= 0)
 })
+
+test_that("absoluteChanges keeps the global cover totals parallel when a regional expectation is negative", {
+  # regone's other land input collapses far below its target anchor, so its
+  # un-floored other land expectation turns negative while regtwo grows: the
+  # floored regional expectation must not lift the global cover total above the
+  # raw global expectation, regtwo is scaled down to keep it exactly parallel
+  years <- c(2010, 2020, 2025, 2030)
+  land <- makeLand(years, list(
+    regone.1 = list(primf = 20, primn = 5, secdf = 50, secdn = 20, pltns = 10),
+    regtwo.1 = list(primf = 20, primn = 5, secdf = 30, secdn = 15, pltns = 10)
+  ))
+
+  # the forest cover stays flat at its anchor in both regions, its expectations
+  # never hit a floor and must stay exactly as they are today
+  xTarget <- makeHarvest(c(2010, 2020), list(
+    regone.1 = list(primf = 0, primn = 0, secyf = 2, secmf = 0, pltns = 1, secnf = 4),
+    regtwo.1 = list(primf = 0, primn = 0, secyf = 2, secmf = 0, pltns = 1, secnf = 4)
+  ))
+  # the un-floored other land expectations are regone -5 and regtwo 3 in 2025,
+  # regone -5 and regtwo 12 in 2030, giving the raw global expectations 3 and 7
+  xInput <- makeHarvest(c(2020, 2025, 2030), list(
+    regone.1 = list(secyf = 2, pltns = 1, secnf = c(10, 1, 1)),
+    regtwo.1 = list(secyf = 2, pltns = 1, secnf = c(4, 8, 12))
+  ))
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             LandHarmonized = land,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+  conditions <- captureConditions(
+    result <- calcWoodHarvestAreaHarmonized(input = "magpie", target = "luh3",
+                                            harmonizationPeriod = c(2020, 2020),
+                                            harmonization = "absoluteChanges")
+  )
+  expect_false(any(grepl("Check failed", conditions$conditions)))
+  x <- result$x
+
+  regionTotal <- dimSums(toolAggregateWoodHarvest(x[, c(2025, 2030), ]), 1.2)
+  otherTotal <- dimSums(regionTotal[, , c("primn", "secdn")], 3)
+
+  # the global other land total equals the un-floored raw global expectation
+  expect_equal(as.vector(dimSums(otherTotal, 1)[, 2025, ]), 3, tolerance = 10^-9)
+  expect_equal(as.vector(dimSums(otherTotal, 1)[, 2030, ]), 7, tolerance = 10^-9)
+
+  # the loss-making region gets nothing of the cover
+  expect_equal(as.vector(otherTotal["regone", 2025, ]), 0)
+  expect_equal(as.vector(otherTotal["regone", 2030, ]), 0)
+
+  # the growing region carries the whole global expectation, scaled below its own
+  expect_equal(as.vector(otherTotal["regtwo", 2025, ]), 3, tolerance = 10^-9)
+  expect_equal(as.vector(otherTotal["regtwo", 2030, ]), 7, tolerance = 10^-9)
+
+  # the forest cover with its unharmed expectations stays exactly the same
+  forestTotal <- dimSums(regionTotal[, , c("primf", "secdf", "pltns")], 3)
+  expect_equal(as.vector(forestTotal["regone", 2025, ]), 3, tolerance = 10^-9)
+  expect_equal(as.vector(forestTotal["regtwo", 2030, ]), 3, tolerance = 10^-9)
+  expect_equal(as.vector(dimSums(forestTotal, 1)[, 2025, ]), 6, tolerance = 10^-9)
+  expect_equal(as.vector(dimSums(forestTotal, 1)[, 2030, ]), 6, tolerance = 10^-9)
+
+  expect_true(min(x) >= 0)
+})
