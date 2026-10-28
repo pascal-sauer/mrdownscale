@@ -1,6 +1,6 @@
 #' toolProjectFertilizerTg
 #'
-#' Project fertilizer tonnages onto the harmonized land: for every year after
+#' Projects fertilizer tonnages onto the harmonized land: for every year after
 #' the harmonization year, the change of each region's tonnage total relative to
 #' the harmonization year is distributed onto the cells of the region
 #' proportional to their harmonized crop group area of that year, on top of the
