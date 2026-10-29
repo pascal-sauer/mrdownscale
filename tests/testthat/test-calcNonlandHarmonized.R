@@ -96,20 +96,16 @@ test_that("calcNonlandHarmonized works with harmonization = absoluteChanges", {
   expect_equal(as.vector(fertilizerGlobalTg[, 2025, ]), (50 + 40) + (1100 - 900))
   expect_equal(as.vector(fertilizerGlobalTg[, 2030, ]), (50 + 40) + (1000 - 900))
 
-  # the clamped kg C per Mha rate of 0 for reg.one primf is floored to the
-  # smallest positive rate (1000); dimSums reads the dots in reg.one/reg.two as
-  # cell separators, so both cells form one region whose raw harmonizer bioh
-  # 1600 + 2200 is first rescaled onto its parallel total 4500 + (4300 - 5500)
-  # = 3300 (factor 3300 / 3800), leaving 1600 * 3300 / 3800 in reg.one, which
-  # is then renormalized onto the recalculated 1000/1600 split:
-  # primf gets 1600 * 3300 / 3800 * 1000 / 2600, secmf 1600 * 3300 / 3800 * 1600 / 2600
+  # the parallel expectation 4500 + (4300 - 5500) = 3300 of the merged region
+  # (dimSums reads the dots in reg.one/reg.two as cell separators, merging both
+  # cells into one region) is allocated directly onto biohCalculated: the
+  # clamped kg C per Mha rate of 0 for reg.one primf is floored to the smallest
+  # positive rate (1000), giving weights 1000/1600 in reg.one and 1200/1000 in
+  # reg.two, so every cluster holds its weight share of the 4800 of the region
   expect_equal(as.vector(x["reg.one", 2025, c("bioh.primf", "bioh.secmf")]),
-               1600 * (3300 / 3800) * c(1000, 1600) / 2600)
-
-  # reg.two's raw 2200 is scaled by the same regional factor, its recalculated
-  # rates equal its harmonizer bioh, so the 1200/1000 split is kept
+               3300 * c(1000, 1600) / 4800)
   expect_equal(as.vector(x["reg.two", 2025, c("bioh.primf", "bioh.secmf")]),
-               c(1200, 1000) * (3300 / 3800))
+               3300 * c(1200, 1000) / 4800)
   expect_equal(as.vector(x["reg.one", 2025, c("harvest_weight_type.roundwood",
                                               "harvest_weight_type.fuelwood")]), c(1, 3))
 
@@ -524,11 +520,12 @@ test_that("the global fallback is scoped to the offending crop group and year ta
   expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
 })
 
-test_that("stranded bioh of clusters with zero harvest area is redistributed", {
+test_that("clusters with zero harvest area host no bioh for absoluteChanges", {
   # identical to the first test, except reg.one loses its harmonized harvest
-  # area after 2020 while keeping positive bioh: rates x land cannot host it
-  # where the land vanished, so the bioh of reg.one moves to
-  # reg.two, the only cluster that still has harvest area
+  # area after 2020 while keeping positive bioh: under absoluteChanges the
+  # regional cover expectation is allocated onto biohCalculated, so the
+  # weightless reg.one clusters host nothing and the whole expectation of the
+  # merged region lands on reg.two, the only cluster with harvest area
   xInput <- new.magpie(c("reg.one", "reg.two"), years = c(2020, 2025, 2030), names = nonlandItems, fill = 0)
   xInput["reg.one", 2020, ] <- c(2000, 1500, 1, 1, 3, 1, 400)
   xInput["reg.one", 2025, ] <- c(500, 1600, 1, 1, 2, 2, 500)
@@ -575,30 +572,21 @@ test_that("stranded bioh of clusters with zero harvest area is redistributed", {
                                     harmonizationPeriod = c(2020, 2020),
                                     harmonization = "absoluteChanges")
   )
-  # the total keeping check for bioh passes by construction, only the
+  # no redistribution happens for absoluteChanges, the allocation gives the
+  # weightless clusters zero by construction, no bioh check fails and only the
   # implausible fertilizer rate of the unchanged fixture is reported
-  expect_false(any(grepl("Check failed: Adapting bioh", conditions$conditions)))
+  expect_false(any(grepl("Check failed.*bioh", conditions$conditions)))
   expect_true(any(grepl("Fertilizer application", conditions$conditions)))
-  # the report covers the two stranded cluster years of reg.one (2025/2030)
-  # with 1600 * 3300 / 3800 = 1390 kg C yr-1 each after the regional rescale
-  # (dots read as cell separators merge the cells into one region totalling
-  # 4500 + (4300 - 5500) = 3300), 2780 of the 9000 + 2 x 3300 = 15600 kg C yr-1
-  # of all cluster years
-  report <- grep("redistributed stranded bioh", conditions$conditions, value = TRUE)
-  expect_equal(length(report), 1)
-  expect_true(grepl("2780 kg C yr-1 \\(17\\.8%", report))
-  expect_true(grepl("from 2 of 8 cluster years \\(25%\\)", report))
   x <- result$x
 
-  # the stranded clusters end up exactly at zero
+  # the weightless clusters end up exactly at zero
   expect_equal(as.vector(x["reg.one", c(2025, 2030), paste0("bioh.", c("primf", "secmf"))]),
                rep(0, 4))
 
-  # reg.two hosts the harmonizer bioh of both clusters: reg.one keeps 1600 kg C
-  # in 2025/2030 (primf clamped to 0, secmf 1600), rescaled to 1390 within the
-  # merged region, and with no harvest area left on its own clusters it moves
-  # to the region's receiver reg.two, whose own 2200 was rescaled to 1910,
-  # normalization then rescales the total of 3300 onto the 1200/1000 split
+  # reg.two hosts the whole parallel expectation of the merged region (dots
+  # read as cell separators merge the cells into one region totalling
+  # 4500 + (4300 - 5500) = 3300) on the only weight left, its own
+  # recalculated 1200/1000 split, so 3300 * c(1200, 1000) / 2200
   expect_equal(as.vector(x["reg.two", 2025, c("bioh.primf", "bioh.secmf")]),
                c(1200, 1000) * 3300 / 2200)
   expect_equal(as.vector(x["reg.two", 2030, c("bioh.primf", "bioh.secmf")]),
@@ -687,9 +675,10 @@ test_that("absoluteChanges keeps regional and global bioh totals parallel to gro
 
 test_that("absoluteChanges compensates clamped bioh within the region", {
   # regone.1's input bioh collapses far below the target, clamping its primf to
-  # zero: the region's raw total 500 + 2500 exceeds its parallel expectation
-  # 4000 - 2500 + 500 = 2000, and the regional rescale scales all cells by
-  # 2/3, its other cell absorbing the excess so the region stays parallel
+  # zero: the region's parallel expectation 4000 - 2500 + 500 = 2000 is
+  # allocated onto the recalculated bioh (primf floored to the smallest positive
+  # rate 500), so both cells share it proportional to their recalculated
+  # 1000 and 2500, the other cell absorbing the difference
   cells <- c("regone.1", "regone.2", "regtwo.1")
 
   xInput <- new.magpie(cells, years = c(2020, 2025), names = nonlandItems, fill = 0)
@@ -743,13 +732,91 @@ test_that("absoluteChanges compensates clamped bioh within the region", {
   expect_equal(as.vector(biohRegion["regtwo", , ]), 2000)
   expect_equal(as.numeric(dimSums(x[, 2025, "bioh"], c(1, 2, 3))), 2000 + 2000)
 
-  # the clamped cell ends up on 500 x 2/3 spread over its recalculated rates
-  # (primf floored to the smallest positive 500), the other cell on 2500 x 2/3
+  # both cells of regone share the expectation 2000 proportional to their
+  # recalculated weights, regone.1 on its floored 500/500, regone.2 on 1500/1000
   expect_equal(as.vector(x["regone.1", 2025, c("bioh.primf", "bioh.secmf")]),
-               rep(500 * (2000 / 3000) * (500 / 1000), 2))
+               2000 * c(500, 500) / 3500)
   expect_equal(as.vector(x["regone.2", 2025, c("bioh.primf", "bioh.secmf")]),
-               c(1500, 1000) * (2000 / 3000))
+               2000 * c(1500, 1000) / 3500)
   expect_equal(as.vector(x["regtwo.1", 2025, c("bioh.primf", "bioh.secmf")]), c(1000, 1000))
+
+  # before and in the harmonization year the target is still reproduced exactly
+  expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
+})
+
+test_that("absoluteChanges allocates regional bioh proportional to recalculated bioh", {
+  # within a region-cover the bioh of the clusters is exactly proportional to
+  # biohCalculated (harmonized kg C per Mha times harmonized harvest area):
+  # regone.1 recalculates to 2 x 7200, regone.2 to 2 x 1200 and regone.3 to
+  # zero, so of the region expectation 9200 regone.1 holds 6/7, regone.2 1/7
+  # and the capacity-less regone.3 exactly nothing, the ratio of the hosting
+  # clusters being their recalculated ratio 6:1
+  cells <- c("regone.1", "regone.2", "regone.3")
+
+  xInput <- new.magpie(cells, years = c(2020, 2025), names = nonlandItems, fill = 0)
+  xInput["regone.1", , c("bioh.primf", "bioh.secmf")] <- 2000
+  xInput["regone.1", 2025, c("bioh.primf", "bioh.secmf")] <- 2400
+  xInput["regone.2", , c("bioh.primf", "bioh.secmf")] <- 1000
+  xInput["regone.2", 2025, c("bioh.primf", "bioh.secmf")] <- 1200
+  xInput["regone.3", , c("bioh.primf", "bioh.secmf")] <- 1000
+  xInput[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xInput[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xInput[, , "fertilizer.c3ann"] <- 100
+  attr(xInput, "geometry") <- "point"
+  attr(xInput, "crs") <- "EPSG:4326"
+  getSets(xInput) <- c("region", "id", "year", "category", "data")
+
+  xTarget <- new.magpie(cells, years = c(2010, 2020), names = nonlandItems, fill = 0)
+  xTarget["regone.1", , c("bioh.primf", "bioh.secmf")] <- 2000
+  xTarget["regone.2", , c("bioh.primf", "bioh.secmf")] <- 1000
+  xTarget["regone.3", , c("bioh.primf", "bioh.secmf")] <- 1000
+  xTarget[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xTarget[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xTarget[, , "fertilizer.c3ann"] <- 100
+  getSets(xTarget) <- c("region", "id", "year", "category", "data")
+
+  landTarget <- new.magpie(cells, years = c(2010, 2020), names = "c3ann", fill = 100)
+  landHarmonized <- new.magpie(cells, years = c(2010, 2020, 2025), names = "c3ann", fill = 100)
+
+  # the harmonized harvest area of regone.1 is tripled, regone.3 loses all of
+  # its harvest area, so the recalculated bioh weights are 14400, 2400 and 0
+  harvestArea <- new.magpie(cells, years = c(2010, 2020, 2025),
+                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf"), fill = 1)
+  harvestArea["regone.1", 2025, ] <- 3
+  harvestArea["regone.3", 2025, ] <- 0
+  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = landTarget,
+             LandHarmonized = landHarmonized,
+             WoodHarvestAreaHarmonized = harvestArea,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+
+  conditions <- captureConditions(
+    result <- calcNonlandHarmonized(input = "magpie", target = "luh3",
+                                    harmonizationPeriod = c(2020, 2020),
+                                    harmonization = "absoluteChanges")
+  )
+  expect_false(any(grepl("Check failed", conditions$conditions)))
+  x <- result$x
+
+  # the region expectation 8000 + (9200 - 8000) = 9200 is allocated onto the
+  # recalculated 14400 : 2400 : 0, so regone.1 and regone.2 hold 6/7 and 1/7
+  # of it, split onto their items by their recalculated item weights
+  expect_equal(as.vector(x["regone.1", 2025, c("bioh.primf", "bioh.secmf")]),
+               rep(9200 * 7200 / 16800, 2))
+  expect_equal(as.vector(x["regone.2", 2025, c("bioh.primf", "bioh.secmf")]),
+               rep(9200 * 1200 / 16800, 2))
+  expect_equal(as.vector(x["regone.3", 2025, c("bioh.primf", "bioh.secmf")]), c(0, 0))
+  expect_equal(as.numeric(sum(x["regone.1", 2025, c("bioh.primf", "bioh.secmf")]) /
+                            sum(x["regone.2", 2025, c("bioh.primf", "bioh.secmf")])), 6)
+  expect_equal(as.numeric(dimSums(x[, 2025, "bioh"], c(1, 2, 3))), 9200)
 
   # before and in the harmonization year the target is still reproduced exactly
   expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
