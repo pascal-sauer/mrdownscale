@@ -36,6 +36,7 @@ Suggests:
     rmarkdown,
     testthat,
     usethis
+Roxygen: list(markdown = TRUE)
 VignetteBuilder:
     knitr
 Encoding: UTF-8

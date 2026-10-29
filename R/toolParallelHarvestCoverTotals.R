@@ -1,22 +1,48 @@
 #' toolParallelHarvestCoverTotals
 #'
-#' For absoluteChanges, keep the global forest and other land cover totals of
-#' the wood harvest area parallel to the input (constant offset) after the
-#' harmonization year: the regional targets are floored at zero and scaled onto
-#' the global target, so a region whose target is a loss receives nothing while
-#' the remaining regions keep the global total parallel. If the global target of
-#' a cover itself turns negative, it is floored to zero and the clipped loss is
-#' charged to the other cover, keeping the global total over all covers
-#' parallel. The prim harvest stays land-derived, the secd/pltns harvest of a
-#' cover is allocated onto the clusters directly, proportional to their
-#' harvestable secondary land, so a region with enough land meets its cover
-#' target exactly and the physical cap holds by construction. Harvest that the
-#' own cover cannot host fills the headroom of the other cover, region first
-#' and then globally, only what remains unhostable anywhere is reported as
-#' excess. Where the land-derived prim harvest alone outweighs a cover's
-#' balanced target, the global totals may still exceed anchor plus delta, an
-#' accepted physical residual reported only by the warn-only checks of the
-#' caller.
+#' For the absoluteChanges harmonizer, keep the global wood harvest area totals
+#' of the two covers (forest: primf/secdf/pltns, other: primn/secdn) parallel to
+#' the input (constant offset) after the harmonization year.
+#'
+#' Processing steps, per year after the harmonization year:
+#'
+#' - Regional cover target: anchor from the target data in the harmonization
+#'   year plus the input change relative to that year.
+#' - Floor regional targets at zero and rescale the rest onto the raw global
+#'   target, so regions with a loss target receive nothing while the global
+#'   cover total stays input parallel.
+#' - Floor a negative global cover target at zero and charge the clipped loss
+#'   to the other cover, keeping the global total over all covers parallel; the
+#'   regional targets rescaled by this charging are the balanced targets, their
+#'   global sums the balanced global target.
+#' - Keep the primary harvest land-derived and allocate the remaining target
+#'   onto the clusters proportional to their harvestable secondary land, so the
+#'   physical yearly cap holds by construction.
+#' - Move harvest that the own cover cannot host into the headroom of the other
+#'   cover, region first and then globally; only what no cover can host
+#'   anywhere becomes excess.
+#'
+#' Output properties: In the ideal case, the harvest area of
+#' each cover stays parallel to the input after the harmonization year,
+#' regionally and globally, and so does the sum over both covers. When that
+#' is impossible, parallelism is broken as follows:
+#'
+#' 1. A regional target that turns negative is floored to zero and the
+#'    remaining regions are rescaled, keeping the global cover total parallel;
+#'    regional parallelism breaks.
+#' 2. A cover whose global target turns negative is floored to zero and the
+#'    loss charged to the other cover: that cover's global total is no longer
+#'    parallel, the sum over both covers still is.
+#' 3. Where harvestable land is too little, harvest moves into the other
+#'    cover's headroom, region first and then globally: first regional per
+#'    cover parallelism is lost, then global per cover parallelism, the sum
+#'    over both covers holds.
+#' 4. The sum over both covers breaks where land-derived primary
+#'    harvest alone outweighs a cover's balanced target, harvest exceeds
+#'    anchor plus delta.
+#'
+#' Always true: the allocated secondary and plantation harvest stays
+#' within the harvestable land of every cluster.
 #'
 #' @param xInput recategorized wood harvest area input data, containing the
 #'   harmonization year and the years after it
@@ -36,7 +62,7 @@
 #'
 #' @author Pascal Sauer
 toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmonized, harmonizationYear) {
-  hp <- harmonizationYear
+  hy <- harmonizationYear
   futureYears <- getYears(primHarv, as.integer = TRUE)
   inputRegion <- dimSums(toolAggregateWoodHarvest(xInput), 1.2)
   targetRegion <- dimSums(toolAggregateWoodHarvest(xTarget), 1.2)
@@ -56,8 +82,8 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
     secd <- covers[[cover]]$secd
     inputCover <- dimSums(inputRegion[, , c(prim, secd)], 3)
     targetCover <- dimSums(targetRegion[, , c(prim, secd)], 3)
-    target <- setYears(targetCover[, hp, ], NULL) +
-      (inputCover[, futureYears, ] - setYears(inputCover[, hp, ], NULL))
+    target <- setYears(targetCover[, hy, ], NULL) +
+      (inputCover[, futureYears, ] - setYears(inputCover[, hy, ], NULL))
     # global first allocation: floor the regional targets at zero and
     # scale the rest onto the raw global target, keeping the global cover
     # total input parallel even where regional targets had to be floored
@@ -90,7 +116,7 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
     # caps, which together is proportional to the item caps themselves), so
     # the cap holds by construction and the clamped away remainder above the
     # cap flows on into the headroom of the other cover below
-    msgHold <- paste0("Regions with target ", cover, " harvest area have harvestable land left to hold it")
+    msgHold <- paste0("Regions with target ", cover, " harvest area > 0 have harvestable land left to hold it")
     maxHarvItems <- maxHarv[, , secd]
     clusterCap <- dimSums(maxHarvItems, 3)
     itemShare <- maxHarvItems / clusterCap

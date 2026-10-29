@@ -22,7 +22,7 @@
 #'
 #' @examples
 #' \dontrun{
-#' calcOutput("WoodHarvestAreaHarmonized", input = "magpie",
+#'   calcOutput("WoodHarvestAreaHarmonized", input = "magpie",
 #'              target = "luh2mod", harmonizationPeriod = c(2015, 2050),
 #'              harmonization = "fade")
 #' }
