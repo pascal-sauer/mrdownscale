@@ -14,14 +14,15 @@
 #' while the remaining regions keep the global total parallel. If the global
 #' expectation of a cover itself turns negative, it is floored to zero and the
 #' clipped loss is charged to the other cover, keeping the global total over all
-#' covers parallel. The prim harvest
-#' stays land-derived, the secd/pltns harvest of a cover absorbs the difference
-#' within the region and the global pool of its own cover, falling back to the
-#' headroom of the other cover, region first and then globally, and finally
-#' reporting the excess where even that cannot host it. Where the land-derived
-#' prim harvest alone outweighs a cover's balanced expectation, the global totals
-#' may still exceed anchor plus delta, an accepted physical residual reported
-#' only by the warn-only checks.
+#' covers parallel. The prim harvest stays land-derived, the secd/pltns harvest
+#' of a cover is allocated onto the cells directly, proportional to their
+#' harvestable secondary land, so a region with enough land meets its cover
+#' expectation exactly and the physical cap holds by construction. Harvest that
+#' the own cover cannot host fills the headroom of the other cover, region first
+#' and then globally, only what remains unhostable anywhere is reported as
+#' excess. Where the land-derived prim harvest alone outweighs a cover's
+#' balanced expectation, the global totals may still exceed anchor plus delta,
+#' an accepted physical residual reported only by the warn-only checks.
 #'
 #' @inheritParams calcNonlandInput
 #' @param target name of a target dataset, see \code{\link{calcLandTarget}}
@@ -65,16 +66,6 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
   xTarget <- calcOutput("NonlandTargetExtrapolated", input = input, target = target,
                         harmonizationPeriod = harmonizationPeriod, aggregate = FALSE)
   xTarget <- xTarget[, , "wood_harvest_area"]
-  harmonizer <- toolGetHarmonizer(harmonization, constantTotal = FALSE)
-  rawHarvestHarmonized <- harmonizer(xInput, xTarget, harmonizationPeriod = harmonizationPeriod)
-
-  stopifnot(rawHarvestHarmonized >= 0)
-  if (harmonization != "absoluteChanges") {
-    afterHarmonization <- getYears(xInput, as.integer = TRUE)
-    afterHarmonization <- afterHarmonization[afterHarmonization >= harmonizationPeriod[2]]
-    stopifnot(rawHarvestHarmonized[, afterHarmonization, ] == xInput[, afterHarmonization, ])
-  }
-  rawHarvestHarmonized <- toolAggregateWoodHarvest(rawHarvestHarmonized)
 
   histYears <- getYears(xTarget, as.integer = TRUE)
   histYears <- histYears[histYears <= harmonizationPeriod[1]]
@@ -87,7 +78,7 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
     targetRegion <- dimSums(toolAggregateWoodHarvest(xTarget), 1.2)
     maxHarv <- toolMaxHarvestPerYear(landHarmonized, split = FALSE)[, futureYears, ]
     # the harvest covers, forest and other land, each with its prim source and
-    # its secondary/plantation pool, expectation and rescaling work per cover
+    # its secondary/plantation pool, expectation and allocation work per cover
     covers <- list(forest = list(prim = "primf", secd = c("secdf", "pltns")),
                    other = list(prim = "primn", secd = "secdn"))
     coverExpected <- list()
@@ -95,24 +86,6 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
     coverItems <- list()
     coverTotal <- list()
     coverCap <- list()
-
-    # distribute the cover total of every cell back onto its items, keeping the
-    # proportional split of the rescaled amounts as far as the item caps allow,
-    # cells that held nothing of the cover fill proportionally to their caps
-    fillItems <- function(xAmount, capAmount, total) {
-      target <- pmin(total, dimSums(capAmount, 3))
-      amountTotal <- dimSums(xAmount, 3)
-      scale <- target / amountTotal
-      scale[amountTotal == 0] <- 0
-      out <- pmin(xAmount * scale, capAmount)
-      spare <- pmax(capAmount - out, 0)
-      spareTotal <- dimSums(spare, 3)
-      gain <- spare * ((target - dimSums(out, 3)) / spareTotal)
-      gain[is.na(gain)] <- 0
-      # the floating point noise from the proportional fill must not turn into
-      # negative harvest area, it crashes downstream consumers of the output
-      return(pmax(out + gain, 0))
-    }
 
     for (cover in names(covers)) {
       prim <- covers[[cover]]$prim
@@ -148,34 +121,31 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
       requiredSecd <- coverExpected[[cover]] - dimSums(dimSums(primHarv[, , covers[[cover]]$prim], 1.2), 3)
       requiredSecd[requiredSecd < 0] <- 0
 
-      # the zero clamping of the raw absolute changes and an over-achieving prim
-      # harvest broke the parallelism, rescale the cover's secd/pltns totals onto
-      # its requirement, keeping the per-cell item split of the raw data
+      # allocate the cover expectation of every region directly onto its cells,
+      # proportional to their harvestable land (split onto the items by their
+      # caps, which together is proportional to the item caps themselves), so
+      # the cap holds by construction and the clamped away remainder above the
+      # cap flows on into the headroom of the other cover below
       msgHold <- paste0("Regions with expected ", cover, " harvest area have harvestable land left to hold it")
-      secdHarv <- rawHarvestHarmonized[, futureYears, secd]
-      secdTotal <- toolRescaleRegionTotals(dimSums(secdHarv, 3), requiredSecd, msgHold)
-      share <- secdHarv / dimSums(secdHarv, 3)
-      share[is.na(share)] <- 0
-      secdHarv <- share * secdTotal
-
-      # move cover harvest above the physical cap into the headroom of the cover
-      # within the region, or of the global pool for the years where no region
-      # can absorb its own excess
-      msgAbsorb <- paste0("Regions absorb their own ", cover, " wood harvest area above the available land")
-      coverTotal[[cover]] <- toolRedistributeOverCap(dimSums(secdHarv, 3),
-                                                     dimSums(maxHarv[, , secd], 3), msgAbsorb)
-      coverCap[[cover]] <- dimSums(maxHarv[, , secd], 3)
-      coverItems[[cover]] <- secdHarv
+      maxHarvItems <- maxHarv[, , secd]
+      cellCap <- dimSums(maxHarvItems, 3)
+      itemShare <- maxHarvItems / cellCap
+      itemShare[is.na(itemShare)] <- 0
+      allocatedSecd <- toolAllocateRegionTotals(requiredSecd, cellCap, msgHold) * itemShare
+      coverTotal[[cover]] <- dimSums(allocatedSecd, 3)
+      coverCap[[cover]] <- cellCap
+      coverItems[[cover]] <- pmin(allocatedSecd, maxHarvItems)
     }
 
-    # harvest of one cover that neither the cover's regional nor its global pool
-    # can host is shifted into the headroom of the other cover, region first and
-    # then globally, only what remains unhostable anywhere is reported as excess
+    # harvest of one cover that its own harvestable land cannot host is shifted
+    # into the headroom of the other cover, region first and then globally,
+    # only what remains unhostable anywhere is reported as excess
     for (cover in names(covers)) {
       other <- setdiff(names(covers), cover)
       for (margin in c(1.2, 1)) {
         excess <- pmax(coverTotal[[cover]] - coverCap[[cover]], 0)
-        headroom <- pmax(coverCap[[other]] - coverTotal[[other]], 0)
+        headroomItems <- pmax(maxHarv[, , covers[[other]]$secd] - coverItems[[other]], 0)
+        headroom <- dimSums(headroomItems, 3)
         hostable <- dimSums(headroom, margin) / dimSums(excess, margin)
         hostable[is.na(hostable)] <- 0
         hostable[hostable > 1] <- 1
@@ -184,15 +154,24 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
         filled[filled > 1] <- 1
         coverTotal[[cover]] <- coverTotal[[cover]] - excess * hostable
         coverTotal[[other]] <- coverTotal[[other]] + headroom * filled
+        # the transferred harvest lands on the cells of the other cover within
+        # their caps, proportional to their remaining headroom
+        coverItems[[other]] <- coverItems[[other]] + headroomItems * filled
       }
     }
 
-    # split the final cover totals back onto the items within their caps
-    secdHarv <- mbind(fillItems(coverItems$forest, maxHarv[, , covers$forest$secd], coverTotal$forest),
-                      fillItems(coverItems$other, maxHarv[, , covers$other$secd], coverTotal$other))
+    secdHarv <- mbind(coverItems$forest, coverItems$other)
     excessSecdHarvest <- pmax(coverTotal$forest - coverCap$forest, 0) +
       pmax(coverTotal$other - coverCap$other, 0)
   } else {
+    harmonizer <- toolGetHarmonizer(harmonization, constantTotal = FALSE)
+    rawHarvestHarmonized <- harmonizer(xInput, xTarget, harmonizationPeriod = harmonizationPeriod)
+    stopifnot(rawHarvestHarmonized >= 0)
+    afterHarmonization <- getYears(xInput, as.integer = TRUE)
+    afterHarmonization <- afterHarmonization[afterHarmonization >= harmonizationPeriod[2]]
+    stopifnot(rawHarvestHarmonized[, afterHarmonization, ] == xInput[, afterHarmonization, ])
+    rawHarvestHarmonized <- toolAggregateWoodHarvest(rawHarvestHarmonized)
+
     # shift harvest from prim to secd to match prim land reduction
     primHarvDiff <- rawHarvestHarmonized[, -1, prim] - primHarv
     secdHarv <- rawHarvestHarmonized[, -1, c("secdf", "secdn", "pltns")]
