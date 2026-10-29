@@ -18,7 +18,10 @@
 #' stays land-derived, the secd/pltns harvest of a cover absorbs the difference
 #' within the region and the global pool of its own cover, falling back to the
 #' headroom of the other cover, region first and then globally, and finally
-#' reporting the excess where even that cannot host it.
+#' reporting the excess where even that cannot host it. Where the land-derived
+#' prim harvest alone outweighs a cover's balanced expectation, the global totals
+#' may still exceed anchor plus delta, an accepted physical residual reported
+#' only by the warn-only checks.
 #'
 #' @inheritParams calcNonlandInput
 #' @param target name of a target dataset, see \code{\link{calcLandTarget}}
