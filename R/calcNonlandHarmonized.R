@@ -8,18 +8,8 @@
 #' harmonizing it. This is then multiplied by the harmonized wood harvest area,
 #' and the recalculated bioh drives the per-cluster split of the output. For
 #' absoluteChanges the regional forest and other land cover totals of bioh stay
-#' parallel to the input (constant offset) after the harmonization year: each
-#' cover's regional expectation is floored at zero and scaled onto the global
-#' expectation, so a region expecting a loss receives nothing while the rest
-#' keep the global cover total parallel, and is then allocated onto the
-#' recalculated bioh directly (toolAllocateRegionTotals), proportional to
-#' harmonized harvest area times harvest rate, so clusters without harvest area
-#' host nothing and a region expecting bioh without any harvest area left to
-#' hold it hands its share to the global pool, where the receiving regions
-#' exceed their own expectation, reported only by the warn-only checks. If the
-#' global expectation of a cover itself turns negative, it is floored to zero
-#' and the clipped loss is charged to the other covers by uniformly scaling
-#' their targets, keeping the global total over all covers parallel. For the
+#' parallel to the input (constant offset) and are allocated onto the
+#' recalculated bioh (toolParallelBiohCoverTotals). For the
 #' other harmonizations bioh of clusters whose harmonized harvest area is zero
 #' is redistributed to clusters with harvest area in the same region, falling
 #' back to the global pool (toolRedistributeBioh).
@@ -137,61 +127,9 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   stopifnot(0 <= biohCalculated, biohCalculated < Inf)
 
   if (harmonization == "absoluteChanges") {
-    covers <- list(forest = c("bioh.primf", "bioh.secmf", "bioh.secyf", "bioh.pltns"),
-                   other = c("bioh.primn", "bioh.secnf"))
-    expectedCoverBioh <- list()
-    coverGlobal <- list()
-    coverItems <- list()
-    for (cover in names(covers)) {
-      items <- intersect(covers[[cover]], getItems(biohCalculated, 3))
-      if (length(items) == 0) {
-        next
-      }
-      inputCoverBioh <- dimSums(xInput[, c(hp[1], yearsAfterHy), items], c(1.2, 3))
-      expected <- setYears(dimSums(xTarget[, hp[1], items], c(1.2, 3)), NULL) +
-        (inputCoverBioh[, yearsAfterHy, ] - setYears(inputCoverBioh[, hp[1], ], NULL))
-      # global first allocation: floor the regional cover expectations at zero
-      # and scale the rest onto the raw global expectation, keeping the global
-      # cover total parallel even where regional expectations had to be floored
-      globalExpected <- dimSums(expected, 1)
-      positiveTotal <- dimSums(pmax(expected, 0), 1)
-      scale <- pmax(globalExpected, 0) / positiveTotal
-      scale[is.na(scale)] <- 0
-      expectedCoverBioh[[cover]] <- pmax(expected, 0) * scale
-      coverGlobal[[cover]] <- globalExpected
-      coverItems[[cover]] <- items
-    }
-
-    # the negative global cover expectation floored to zero is charged to the
-    # other covers, so the global total over all covers stays input parallel
-    globalTotal <- Reduce(`+`, coverGlobal)
-    positiveGlobalTotal <- Reduce(`+`, lapply(coverGlobal, function(globalExpected) pmax(globalExpected, 0)))
-    balanceFactor <- pmax(globalTotal, 0) / positiveGlobalTotal
-    balanceFactor[is.na(balanceFactor)] <- 1
-    coverGlobalBalanced <- pmax(globalTotal, 0)
-    for (cover in names(expectedCoverBioh)) {
-      expectedCoverBioh[[cover]] <- expectedCoverBioh[[cover]] * balanceFactor
-    }
-
-    # allocate every cover's regional expectation directly onto the
-    # recalculated bioh, proportional to its weight (split onto the items by
-    # their recalculated values, which together is proportional to them), so
-    # clusters without harvest area host nothing and the regional cover totals
-    # hold by construction
-    allocatedCoverBioh <- list()
-    for (cover in names(expectedCoverBioh)) {
-      items <- coverItems[[cover]]
-      coverBiohWeight <- dimSums(biohCalculated[, yearsAfterHy, items], 3)
-      msgCover <- paste0("Regions with expected ", cover, " bioh have harvest area left to hold it")
-      itemShare <- biohCalculated[, yearsAfterHy, items] / coverBiohWeight
-      itemShare[is.na(itemShare)] <- 0
-      allocatedCoverBioh[[cover]] <-
-        toolAllocateRegionTotals(expectedCoverBioh[[cover]], coverBiohWeight, msgCover) * itemShare
-    }
-    biohAdapted <- do.call(mbind, allocatedCoverBioh)
-    histYears <- getYears(xTarget, as.integer = TRUE)
-    histYears <- histYears[histYears <= hp[1]]
-    out <- mbind(out, mbind(xTarget[, histYears, getItems(biohAdapted, 3)], biohAdapted))
+    # the regional cover expectations stay parallel to the input and are
+    # allocated onto the recalculated bioh directly
+    out <- mbind(out, toolParallelBiohCoverTotals(xInput, xTarget, biohCalculated, hp[1]))
   } else {
     # redistribute bioh from clusters without harvest area
     out[, , "bioh"] <- toolRedistributeBioh(out[, , "bioh"], biohCalculated)
@@ -240,20 +178,6 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
     fertilizerOutput <- dimSums(toolFertilizerTg(out[, yearsAfterHy, "fertilizer"], landHarmonizedMha), 1)
     toolExpectLessDiff(fertilizerOutput, expectedGlobalTg, 10^-5,
                        "Global fertilizer totals are parallel to input after the harmonization year")
-    outCoverTotals <- list()
-    for (cover in names(covers)) {
-      items <- intersect(covers[[cover]], getItems(out, 3))
-      if (length(items) == 0) {
-        next
-      }
-      outCoverTotals[[cover]] <- dimSums(out[, yearsAfterHy, items], c(1.2, 3))
-      toolExpectLessDiff(outCoverTotals[[cover]], expectedCoverBioh[[cover]], 10^-5,
-                         paste0("Regional ", cover, " bioh totals are parallel to input ",
-                                "after the harmonization year"))
-    }
-    toolExpectLessDiff(dimSums(Reduce(`+`, outCoverTotals), 1),
-                       coverGlobalBalanced, 10^-5,
-                       "Global bioh totals are parallel to input after the harmonization year")
   } else {
     years <- getYears(out, TRUE)[getYears(out, TRUE) >= hp[2]]
     fertilizerInput <- nonlandInput[, years, "fertilizer"]
