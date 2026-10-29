@@ -20,7 +20,7 @@ amounts have hosting capacity}
 }
 \value{
 amounts per cell, rescaled so the region totals of the tables without
-  global fallback match their expectation
+global fallback match their expectation
 }
 \description{
 Rescale per-cell amounts so that each region's amount total of every table

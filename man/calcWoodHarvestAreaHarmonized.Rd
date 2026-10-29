@@ -35,24 +35,12 @@ harmonized land data. If secondary harvest exceeds the available
 secondary land, the excess is shifted to the other secondary land
 (secdf to secdn and vice versa). Remaining excess harvest area is reported.
 For absoluteChanges, the global forest and other land cover totals of the
-harvest area stay parallel to the input (constant offset) after the
-harmonization year: the regional expectations are floored at zero and scaled
-onto the global expectation, so a region expecting a loss receives nothing
-while the remaining regions keep the global total parallel. If the global
-expectation of a cover itself turns negative, it is floored to zero and the
-clipped loss is charged to the other cover, keeping the global total over all
-covers parallel. The prim harvest
-stays land-derived, the secd/pltns harvest of a cover absorbs the difference
-within the region and the global pool of its own cover, falling back to the
-headroom of the other cover, region first and then globally, and finally
-reporting the excess where even that cannot host it. Where the land-derived
-prim harvest alone outweighs a cover's balanced expectation, the global totals
-may still exceed anchor plus delta, an accepted physical residual reported
-only by the warn-only checks.
+harvest area stay parallel to the input (constant offset) and are allocated
+onto the harvestable land (toolParallelHarvestCoverTotals).
 }
 \examples{
 \dontrun{
-calcOutput("WoodHarvestAreaHarmonized", input = "magpie",
+  calcOutput("WoodHarvestAreaHarmonized", input = "magpie",
              target = "luh2mod", harmonizationPeriod = c(2015, 2050),
              harmonization = "fade")
 }

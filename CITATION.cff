@@ -3,7 +3,7 @@ message: If you use this software, please cite it using the metadata from this f
 type: software
 title: 'mrdownscale: Downscale and harmonize land use data'
 version: 0.54.0
-date-released: '2026-10-28'
+date-released: '2026-10-29'
 abstract: Downscale and harmonize land use data (e.g. MAgPIE or WITCH) using high
   resolution reference data (e.g. LUH2v2h or LUH3).
 authors:

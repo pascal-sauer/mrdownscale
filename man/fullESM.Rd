@@ -23,7 +23,7 @@ When called via madrat::retrieveData rev will be converted to numeric_version.}
 \item{input}{name of an input dataset, options: "magpie", "witch"}
 
 \item{fileNamePart}{scenario nc files will be called
-multiple-[type]_[fileNamePart]-[revision]_gn_[min(yearsSubset)]-[max(yearsSubset)].nc
+\verb{multiple-[type]_[fileNamePart]-[revision]_gn_[min(yearsSubset)]-[max(yearsSubset)].nc}
 where type is one of states/management/transitions}
 
 \item{harmonizationPeriod}{Two integer values, before the first given

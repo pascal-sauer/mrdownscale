@@ -27,24 +27,14 @@ data for consistency before returning.
 \details{
 Wood harvest biomass (bioh) is adapted to the harmonized wood harvest area
 by calculating kg C per mega hectare for input and target data and
-harmonizing it. This is then multiplied by the harmonized wood harvest area
-and scaled so the total harmonized bioh is reached. For absoluteChanges the
-regional forest and other land cover totals of bioh stay parallel to the
-input (constant offset) after the harmonization year: where zero clamping
-inflated a region's total above its expectation it is rescaled back, the
-per-cell kg C per mega hectare times harvest area split only deciding which
-cells can host how much. Because that per-cell split moves bioh between the
-covers, a final cover-granular rescale restores the parallel total of each
-cover, floored regional cover expectations being scaled onto the global
-expectation, so a region expecting a loss receives nothing while the rest
-keep the global cover total parallel, falling back to a global factor where
-a region expects bioh of a cover but has no cells left to hold it. If the
-global expectation of a cover itself turns negative, it is floored to zero
-and the clipped loss is charged to the other covers by uniformly scaling
-their targets, keeping the global total over all covers parallel. bioh of
-clusters whose harmonized harvest area is zero is redistributed to clusters
-with harvest area in the same region, falling back to the global pool
-(toolRedistributeBioh).
+harmonizing it. This is then multiplied by the harmonized wood harvest area,
+and the recalculated bioh drives the per-cluster split of the output. For
+absoluteChanges the regional forest and other land cover totals of bioh stay
+parallel to the input (constant offset) and are allocated onto the
+recalculated bioh (toolParallelBiohCoverTotals). For the
+other harmonizations bioh of clusters whose harmonized harvest area is zero
+is redistributed to clusters with harvest area in the same region, falling
+back to the global pool (toolRedistributeBioh).
 Harmonize absolute fertilizer in Tg yr-1, then convert to fertilizer rate
 in kg ha-1 yr-1. For absoluteChanges the tonnage changes of the input since
 the harmonization year are applied regionally, projected onto the harmonized

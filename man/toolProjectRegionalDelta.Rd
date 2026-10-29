@@ -20,7 +20,7 @@ projected delta for the years after the harmonization year}
 }
 \value{
 projected amounts for the years after the harmonization year,
-  clamped at zero, in the item order of xTarget
+clamped at zero, in the item order of xTarget
 }
 \description{
 Project amounts onto target data: for every year after the harmonization
