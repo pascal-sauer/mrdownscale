@@ -2,20 +2,20 @@
 #'
 #' For absoluteChanges, keep the global forest and other land cover totals of
 #' the wood harvest area parallel to the input (constant offset) after the
-#' harmonization year: the regional expectations are floored at zero and scaled
-#' onto the global expectation, so a region expecting a loss receives nothing
-#' while the remaining regions keep the global total parallel. If the global
-#' expectation of a cover itself turns negative, it is floored to zero and the
-#' clipped loss is charged to the other cover, keeping the global total over all
-#' covers parallel. The prim harvest stays land-derived, the secd/pltns harvest
-#' of a cover is allocated onto the cells directly, proportional to their
+#' harmonization year: the regional targets are floored at zero and scaled onto
+#' the global target, so a region whose target is a loss receives nothing while
+#' the remaining regions keep the global total parallel. If the global target of
+#' a cover itself turns negative, it is floored to zero and the clipped loss is
+#' charged to the other cover, keeping the global total over all covers
+#' parallel. The prim harvest stays land-derived, the secd/pltns harvest of a
+#' cover is allocated onto the clusters directly, proportional to their
 #' harvestable secondary land, so a region with enough land meets its cover
-#' expectation exactly and the physical cap holds by construction. Harvest that
-#' the own cover cannot host fills the headroom of the other cover, region first
+#' target exactly and the physical cap holds by construction. Harvest that the
+#' own cover cannot host fills the headroom of the other cover, region first
 #' and then globally, only what remains unhostable anywhere is reported as
 #' excess. Where the land-derived prim harvest alone outweighs a cover's
-#' balanced expectation, the global totals may still exceed anchor plus delta,
-#' an accepted physical residual reported only by the warn-only checks of the
+#' balanced target, the global totals may still exceed anchor plus delta, an
+#' accepted physical residual reported only by the warn-only checks of the
 #' caller.
 #'
 #' @param xInput recategorized wood harvest area input data, containing the
@@ -30,9 +30,9 @@
 #' @return list with the secondary and plantation harvest area of the years
 #'   after the harmonization year (`secdHarv`), the excess harvest area that
 #'   not even the other cover can host (`excessSecdHarvest`), the balanced
-#'   regional cover expectations (`coverExpected`), the balanced global cover
-#'   total expectation (`coverGlobalBalanced`) and the cover structure
-#'   (`covers`), so the caller can check its final output for parallelism
+#'   regional cover targets (`coverTarget`), the balanced global cover total
+#'   target (`coverGlobalBalanced`) and the cover structure (`covers`), so the
+#'   caller can check its final output for parallelism
 #'
 #' @author Pascal Sauer
 toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmonized, harmonizationYear) {
@@ -42,10 +42,10 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
   targetRegion <- dimSums(toolAggregateWoodHarvest(xTarget), 1.2)
   maxHarv <- toolMaxHarvestPerYear(landHarmonized, split = FALSE)[, futureYears, ]
   # the harvest covers, forest and other land, each with its prim source and
-  # its secondary/plantation pool, expectation and allocation work per cover
+  # its secondary/plantation pool, target and allocation work per cover
   covers <- list(forest = list(prim = "primf", secd = c("secdf", "pltns")),
                  other = list(prim = "primn", secd = "secdn"))
-  coverExpected <- list()
+  coverTarget <- list()
   coverGlobal <- list()
   coverItems <- list()
   coverTotal <- list()
@@ -56,20 +56,20 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
     secd <- covers[[cover]]$secd
     inputCover <- dimSums(inputRegion[, , c(prim, secd)], 3)
     targetCover <- dimSums(targetRegion[, , c(prim, secd)], 3)
-    expected <- setYears(targetCover[, hp, ], NULL) +
+    target <- setYears(targetCover[, hp, ], NULL) +
       (inputCover[, futureYears, ] - setYears(inputCover[, hp, ], NULL))
-    # global first allocation: floor the regional expectations at zero and
-    # scale the rest onto the raw global expectation, keeping the global cover
-    # total input parallel even where regional expectations had to be floored
-    globalExpected <- dimSums(expected, 1)
-    positiveTotal <- dimSums(pmax(expected, 0), 1)
-    scale <- pmax(globalExpected, 0) / positiveTotal
+    # global first allocation: floor the regional targets at zero and
+    # scale the rest onto the raw global target, keeping the global cover
+    # total input parallel even where regional targets had to be floored
+    globalTarget <- dimSums(target, 1)
+    positiveTotal <- dimSums(pmax(target, 0), 1)
+    scale <- pmax(globalTarget, 0) / positiveTotal
     scale[is.na(scale)] <- 0
-    coverExpected[[cover]] <- pmax(expected, 0) * scale
-    coverGlobal[[cover]] <- globalExpected
+    coverTarget[[cover]] <- pmax(target, 0) * scale
+    coverGlobal[[cover]] <- globalTarget
   }
 
-  # the negative global cover expectation floored to zero is charged to the
+  # the negative global cover target floored to zero is charged to the
   # other cover, so the global total over all covers stays input parallel
   globalTotal <- coverGlobal$forest + coverGlobal$other
   positiveGlobalTotal <- pmax(coverGlobal$forest, 0) + pmax(coverGlobal$other, 0)
@@ -77,27 +77,27 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
   balanceFactor[is.na(balanceFactor)] <- 1
   coverGlobalBalanced <- pmax(globalTotal, 0)
   for (cover in names(covers)) {
-    coverExpected[[cover]] <- coverExpected[[cover]] * balanceFactor
+    coverTarget[[cover]] <- coverTarget[[cover]] * balanceFactor
   }
 
   for (cover in names(covers)) {
     secd <- covers[[cover]]$secd
-    requiredSecd <- coverExpected[[cover]] - dimSums(dimSums(primHarv[, , covers[[cover]]$prim], 1.2), 3)
+    requiredSecd <- coverTarget[[cover]] - dimSums(dimSums(primHarv[, , covers[[cover]]$prim], 1.2), 3)
     requiredSecd[requiredSecd < 0] <- 0
 
-    # allocate the cover expectation of every region directly onto its cells,
+    # allocate the cover target of every region directly onto its clusters,
     # proportional to their harvestable land (split onto the items by their
     # caps, which together is proportional to the item caps themselves), so
     # the cap holds by construction and the clamped away remainder above the
     # cap flows on into the headroom of the other cover below
-    msgHold <- paste0("Regions with expected ", cover, " harvest area have harvestable land left to hold it")
+    msgHold <- paste0("Regions with target ", cover, " harvest area have harvestable land left to hold it")
     maxHarvItems <- maxHarv[, , secd]
-    cellCap <- dimSums(maxHarvItems, 3)
-    itemShare <- maxHarvItems / cellCap
+    clusterCap <- dimSums(maxHarvItems, 3)
+    itemShare <- maxHarvItems / clusterCap
     itemShare[is.na(itemShare)] <- 0
-    allocatedSecd <- toolAllocateRegionTotals(requiredSecd, cellCap, msgHold) * itemShare
+    allocatedSecd <- toolAllocateRegionTotals(requiredSecd, clusterCap, msgHold) * itemShare
     coverTotal[[cover]] <- dimSums(allocatedSecd, 3)
-    coverCap[[cover]] <- cellCap
+    coverCap[[cover]] <- clusterCap
     coverItems[[cover]] <- pmin(allocatedSecd, maxHarvItems)
   }
 
@@ -118,7 +118,7 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
       filled[filled > 1] <- 1
       coverTotal[[cover]] <- coverTotal[[cover]] - excess * hostable
       coverTotal[[other]] <- coverTotal[[other]] + headroom * filled
-      # the transferred harvest lands on the cells of the other cover within
+      # the transferred harvest lands on the clusters of the other cover within
       # their caps, proportional to their remaining headroom
       coverItems[[other]] <- coverItems[[other]] + headroomItems * filled
     }
@@ -130,7 +130,7 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
 
   return(list(secdHarv = secdHarv,
               excessSecdHarvest = excessSecdHarvest,
-              coverExpected = coverExpected,
+              coverTarget = coverTarget,
               coverGlobalBalanced = coverGlobalBalanced,
               covers = covers))
 }
