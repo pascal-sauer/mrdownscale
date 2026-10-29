@@ -22,7 +22,7 @@
 #'
 #' @examples
 #' \dontrun{
-#' calcOutput("WoodHarvestAreaHarmonized", input = "magpie",
+#'   calcOutput("WoodHarvestAreaHarmonized", input = "magpie",
 #'              target = "luh2mod", harmonizationPeriod = c(2015, 2050),
 #'              harmonization = "fade")
 #' }
@@ -59,14 +59,14 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
   futureYears <- setdiff(getYears(xInput, as.integer = TRUE), histYears)
 
   if (harmonization == "absoluteChanges") {
-    # the cover expectations stay parallel to the input and are allocated onto
+    # the cover targets stay parallel to the input and are allocated onto
     # the harvestable land directly, the checks below use what the tool returns
     primHarv <- primHarv[, futureYears, ]
     coverHarvest <- toolParallelHarvestCoverTotals(xInput, xTarget, primHarv, landHarmonized,
                                                    harmonizationPeriod[1])
     secdHarv <- coverHarvest$secdHarv
     excessSecdHarvest <- coverHarvest$excessSecdHarvest
-    coverExpected <- coverHarvest$coverExpected
+    coverTarget <- coverHarvest$coverTarget
     coverGlobalBalanced <- coverHarvest$coverGlobalBalanced
     covers <- coverHarvest$covers
   } else {
@@ -145,9 +145,9 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
     for (cover in names(covers)) {
       items <- c(covers[[cover]]$prim, covers[[cover]]$secd)
       outCoverTotals[[cover]] <- dimSums(outRegionTotal[, , items], 3)
-      message <- paste0("Regional ", cover, " wood harvest area is parallel to input ",
-                        "after the harmonization year")
-      toolExpectLessDiff(outCoverTotals[[cover]], coverExpected[[cover]], 10^-5, message)
+      msg <- paste0("Regional ", cover, " wood harvest area is parallel to input ",
+                    "after the harmonization year")
+      toolExpectLessDiff(outCoverTotals[[cover]], coverTarget[[cover]], 10^-5, msg)
     }
     toolExpectLessDiff(dimSums(outCoverTotals$forest + outCoverTotals$other, 1),
                        coverGlobalBalanced, 10^-5,

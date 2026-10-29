@@ -1,32 +1,32 @@
 harvestItems <- paste0("wood_harvest_area.", c("primf", "secyf", "secmf", "pltns", "primn", "secnf"))
 landItems <- c("primf", "secdf", "pltns", "primn", "secdn")
 
-makeHarvest <- function(years, cellValues) {
-  x <- new.magpie(names(cellValues), years = years, names = harvestItems, fill = 0)
+makeHarvest <- function(years, clusterValues) {
+  x <- new.magpie(names(clusterValues), years = years, names = harvestItems, fill = 0)
   getSets(x) <- c("region", "id", "year", "category", "data")
-  for (cell in names(cellValues)) {
-    for (item in names(cellValues[[cell]])) {
-      x[cell, , paste0("wood_harvest_area.", item)] <- cellValues[[cell]][[item]]
+  for (cluster in names(clusterValues)) {
+    for (item in names(clusterValues[[cluster]])) {
+      x[cluster, , paste0("wood_harvest_area.", item)] <- clusterValues[[cluster]][[item]]
     }
   }
   return(x)
 }
 
-makeLand <- function(years, cellValues) {
-  x <- new.magpie(names(cellValues), years = years, names = landItems, fill = 0)
+makeLand <- function(years, clusterValues) {
+  x <- new.magpie(names(clusterValues), years = years, names = landItems, fill = 0)
   getSets(x) <- c("region", "id", "year", "land")
-  for (cell in names(cellValues)) {
-    for (item in names(cellValues[[cell]])) {
-      x[cell, , item] <- cellValues[[cell]][[item]]
+  for (cluster in names(clusterValues)) {
+    for (item in names(clusterValues[[cluster]])) {
+      x[cluster, , item] <- clusterValues[[cluster]][[item]]
     }
   }
   return(x)
 }
 
-test_that("toolParallelHarvestCoverTotals keeps cover expectations parallel and allocates onto harvestable land", {
+test_that("toolParallelHarvestCoverTotals keeps cover targets parallel and allocates onto harvestable land", {
   # regone grows its forest harvest in the input while land stays flat, regtwo
-  # is inert: every region's cover expectation is its target total plus its own
-  # input delta, allocated onto the cells proportional to their harvestable land
+  # is inert: every region's cover target is its target total plus its own
+  # input delta, allocated onto the clusters proportional to their harvestable land
   years <- c(2010, 2020, 2025, 2030)
   land <- makeLand(years, list(
     regone.1 = list(primf = 100, primn = 40, secdf = 50, secdn = 20, pltns = 10),
@@ -47,17 +47,17 @@ test_that("toolParallelHarvestCoverTotals keeps cover expectations parallel and 
   )
   expect_false(any(grepl("Check failed", conditions$conditions)))
 
-  # forest expectation 6 + (12 - 6) = 12 in 2025 for regone and 3 for regtwo,
+  # forest target 6 + (12 - 6) = 12 in 2025 for regone and 3 for regtwo,
   # other land stays at its anchors of 2 and 1, the global totals balanced
-  expect_equal(as.vector(result$coverExpected$forest["regone", 2025, ]), 12)
-  expect_equal(as.vector(result$coverExpected$other["regtwo", 2030, ]), 1)
+  expect_equal(as.vector(result$coverTarget$forest["regone", 2025, ]), 12)
+  expect_equal(as.vector(result$coverTarget$other["regtwo", 2030, ]), 1)
   expect_equal(as.vector(result$coverGlobalBalanced[, 2025, ]), 15 + 3)
   expect_identical(result$covers,
                    list(forest = list(prim = "primf", secd = c("secdf", "pltns")),
                         other = list(prim = "primn", secd = "secdn")))
 
   # the allocation follows the harvestable land caps (60 : 50 within regone),
-  # the cell shares are their item caps of the cover caps
+  # the cluster shares are their item caps of the cover caps
   expect_equal(as.vector(result$secdHarv["regone.1", 2025, "secdf"]), 12 * 50 / 110, tolerance = 10^-8)
   expect_equal(as.vector(result$secdHarv["regone.1", 2025, "pltns"]), 12 * 10 / 110, tolerance = 10^-8)
   expect_equal(as.vector(result$secdHarv["regone.2", 2025, "secdf"]), 12 * 40 / 110, tolerance = 10^-8)
@@ -91,11 +91,11 @@ test_that("toolParallelHarvestCoverTotals reports the excess that not even the o
   expect_equal(as.numeric(dimSums(result$excessSecdHarvest, 1)[, 2025, ]), 10)
   expect_equal(as.numeric(dimSums(result$excessSecdHarvest, 1)[, 2030, ]), 10)
 
-  # both cells end exactly on their caps, the hostable other land expectation
-  # fills its cells to their caps too
+  # both clusters end exactly on their caps, the hostable other land target
+  # fills its clusters to their caps too
   expect_equal(as.vector(result$secdHarv["regone.1", 2025, c("secdf", "pltns")]), c(5, 1))
   expect_equal(as.vector(result$secdHarv["regone.2", 2025, c("secdf", "pltns")]), c(5, 1))
   expect_equal(as.vector(result$secdHarv["regone.1", 2025, "secdn"]), 1)
-  expect_equal(as.vector(result$coverExpected$forest["regone", 2025, ]), 23)
+  expect_equal(as.vector(result$coverTarget$forest["regone", 2025, ]), 23)
   expect_equal(as.vector(result$coverGlobalBalanced[, 2025, ]), 23 + 1)
 })
