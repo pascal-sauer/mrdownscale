@@ -1,29 +1,66 @@
 #' toolParallelBiohCoverTotals
 #'
-#' For absoluteChanges, keep the regional forest and other land cover totals of
-#' bioh parallel to the input (constant offset) after the harmonization year:
-#' each cover's regional target is floored at zero and scaled onto the global
-#' target, so a region with a negative change receives nothing while the rest
-#' keep the global cover total parallel, and is then allocated onto the
-#' recalculated bioh directly (toolAllocateRegionTotals), proportional to
-#' harmonized harvest area times harvest rate, so clusters without harvest area
-#' host nothing and a region with a bioh target but no harvest area left to
-#' hold it hands its share to the global pool, where the receiving regions
-#' exceed their own target, reported only by the warn-only checks. If the
-#' global target of a cover itself turns negative, it is floored to zero and
-#' the clipped loss is charged to the other covers by uniformly scaling their
-#' targets, keeping the global total over all covers parallel.
+#' For the absoluteChanges harmonizer, keep the bioh cover totals (forest:
+#' bioh.primf/secmf/secyf/pltns, other: bioh.primn/secnf) parallel to the input
+#' (constant offset) after the harmonization year. The cover targets are
+#' computed by toolParallelCoverTargets and allocated onto the recalculated
+#' bioh by toolAllocateRegionTotals, split onto the cover's bioh items
+#' proportional to their recalculated values.
+#'
+#' Processing steps, per year after the harmonization year:
+#'
+#' - Regional cover target: anchor from the target data in the harmonization
+#'   year plus the input change relative to that year.
+#' - Floor regional targets at zero and rescale the rest onto the raw global
+#'   target, so regions with a loss target receive nothing while the global
+#'   cover total stays input parallel.
+#' - Floor a negative global cover target at zero and charge the clipped loss
+#'   to the other cover, keeping the global total over all covers parallel; the
+#'   regionally rescaled targets are the balanced targets, the floored global
+#'   total the balanced global target.
+#' - Allocate each cover's balanced regional target onto the recalculated bioh
+#'   of its clusters (regional weight: summed recalculated bioh of the cover's
+#'   items) and split it onto the cover's items proportional to their
+#'   recalculated values, so clusters without harvest area host nothing.
+#' - Check the allocation for regional and global cover parallelism to the
+#'   balanced targets (toolExpectLessDiff, 10^-5).
+#'
+#' Output properties: In the ideal case, the bioh of
+#' each cover stays parallel to the input after the harmonization year,
+#' regionally and globally, and so does the sum over both covers. When that
+#' is impossible, parallelism is broken as follows:
+#'
+#' 1. A regional target that turns negative is floored to zero and the
+#'    remaining regions are rescaled, keeping the global cover total parallel;
+#'    regional parallelism breaks.
+#' 2. A cover whose global target turns negative is floored to zero and the
+#'    loss charged to the other cover: that cover's global total is no longer
+#'    parallel, the sum over both covers still is.
+#' 3. Stranded targets of regions without recalculated bioh fill the remaining
+#'    room of all clusters (toolAllocateRegionTotals), so receivers stay within
+#'    their recalculated bioh weight; if the global room falls short, the
+#'    unplaceable remainder is not allocated and breaks regional and global
+#'    cover parallelism, flagged by the tool's own checks as notes (no error).
+#' 4. Clusters without harvest area have zero recalculated bioh and host
+#'    nothing.
+#'
+#' Always true: the allocated bioh of a cluster stays within its recalculated
+#' bioh, except through the uncapped own share of an oversubscribed region,
+#' and nothing lands on clusters without recalculated bioh.
 #'
 #' @param xInput recategorized input nonland data, containing the harmonization
 #'   year and the years after it
-#' @param xTarget extrapolated target nonland data, its years up to the
-#'   harmonization year are returned unchanged
+#' @param xTarget extrapolated target nonland data, providing the anchor in the
+#'   harmonization year, its years up to the harmonization year are returned
+#'   unchanged
 #' @param biohCalculated recalculated bioh (harmonized kg C per Mha times
-#'   harmonized harvest area), only its years after the harmonization year are
-#'   used
+#'   harmonized harvest area), providing the allocation weight, only its years
+#'   after the harmonization year are used
 #' @param harmonizationYear integer year the input changes are measured from
 #' @return bioh for all years: the target data up to the harmonization year,
-#'   then the allocated cover targets for the years after it
+#'   then the allocated cover targets for the years after it; the tool checks
+#'   its own allocation for regional and global parallelism of every cover to
+#'   the balanced targets
 #'
 #' @author Pascal Sauer
 toolParallelBiohCoverTotals <- function(xInput, xTarget, biohCalculated, harmonizationYear) {
