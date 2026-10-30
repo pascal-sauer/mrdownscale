@@ -519,6 +519,67 @@ test_that("the global fallback is scoped to the offending crop group and year ta
   expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
 })
 
+test_that("zeroing cropland-less fertilizer tonnages matches clusters by name", {
+  # the mocked nonland input lists its clusters in the reversed order of the
+  # nonland target: the projected tonnages follow the target's item order, the
+  # cropland mask the input's, so a positional mask zeroes the wrong cluster
+  xInput <- new.magpie(c("regtwo.1", "regone.1"), years = c(2020, 2025), names = nonlandItems, fill = 0)
+  xInput[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xInput[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xInput[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xInput["regone.1", , "fertilizer.c3ann"] <- c(10, 10)
+  xInput["regtwo.1", , "fertilizer.c3ann"] <- c(10, 10)
+  attr(xInput, "geometry") <- "point"
+  attr(xInput, "crs") <- "EPSG:4326"
+  getSets(xInput) <- c("region", "id", "year", "category", "data")
+
+  # target rate of 100 kg ha-1 yr-1 on 100 Mha anchors 10 Tg per cluster
+  xTarget <- new.magpie(c("regone.1", "regtwo.1"), years = c(2010, 2020), names = nonlandItems, fill = 0)
+  xTarget[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xTarget[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xTarget[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xTarget[, , "fertilizer.c3ann"] <- 100
+  getSets(xTarget) <- c("region", "id", "year", "category", "data")
+
+  landTarget <- new.magpie(c("regone.1", "regtwo.1"), years = c(2010, 2020), names = "c3ann", fill = 100)
+  landHarmonized <- new.magpie(c("regone.1", "regtwo.1"), years = c(2010, 2020, 2025),
+                               names = "c3ann", fill = 100)
+  # regtwo.1 loses all its cropland in 2025, so only its 10 Tg anchor must be zeroed
+  landHarmonized["regtwo.1", 2025, ] <- 0
+
+  harvestArea <- new.magpie(c("regone.1", "regtwo.1"), years = c(2010, 2020, 2025),
+                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf"), fill = 1)
+  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = landTarget,
+             LandHarmonized = landHarmonized,
+             WoodHarvestAreaHarmonized = harvestArea,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+
+  conditions <- captureConditions(
+    result <- calcNonlandHarmonized(input = "magpie", target = "luh3",
+                                    harmonizationPeriod = c(2020, 2020),
+                                    harmonization = "absoluteChanges")
+  )
+  # regtwo lost the land holding its tonnes, its warn fires, while the global
+  # parallelism check must stay green
+  expect_true(any(grepl("Check failed.*cropland left to hold it", conditions$conditions)))
+  expect_false(any(grepl("Check failed.*Global fertilizer totals are parallel", conditions$conditions)))
+  x <- result$x
+
+  # only regtwo's tonnes are zeroed, its unholdable target falls back globally
+  # onto regone, doubling its 10 Tg anchor to a 200 kg ha-1 yr-1 rate
+  expect_equal(as.vector(x["regone.1", 2025, "fertilizer"]), 200)
+  expect_equal(as.vector(x["regtwo.1", 2025, "fertilizer"]), 0)
+})
+
 test_that("stranded bioh of clusters with zero harvest area is redistributed", {
   # identical to the first test, except reg.one loses its harmonized harvest
   # area after 2020 while keeping positive bioh: rates x land cannot host it
