@@ -34,6 +34,9 @@ harvest (or vice versa) to match the primary land reduction from the
 harmonized land data. If secondary harvest exceeds the available
 secondary land, the excess is shifted to the other secondary land
 (secdf to secdn and vice versa). Remaining excess harvest area is reported.
+For absoluteChanges, the global forest and other land cover totals of the
+harvest area stay parallel to the input (constant offset) and are allocated
+onto the harvestable land (toolParallelHarvestCoverTotals).
 }
 \examples{
 \dontrun{

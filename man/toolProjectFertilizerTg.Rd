@@ -24,8 +24,8 @@ harmonization year and the years after it}
 }
 \value{
 projected fertilizer in Tg yr-1 for the years after the
-  harmonization year, clamped at zero, in the item order of
-  fertilizerTgTarget
+harmonization year, clamped at zero, in the item order of
+fertilizerTgTarget
 }
 \description{
 Project fertilizer tonnages onto the harmonized land: for every year after

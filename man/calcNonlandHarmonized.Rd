@@ -27,11 +27,14 @@ data for consistency before returning.
 \details{
 Wood harvest biomass (bioh) is adapted to the harmonized wood harvest area
 by calculating kg C per mega hectare for input and target data and
-harmonizing it. This is then multiplied by the harmonized wood harvest area
-and scaled so the total harmonized bioh is reached. bioh of clusters
-whose harmonized harvest area is zero is redistributed to clusters with
-harvest area in the same region, falling back to the global pool
-(toolRedistributeBioh).
+harmonizing it. This is then multiplied by the harmonized wood harvest area,
+and the recalculated bioh drives the per-cluster split of the output. For
+absoluteChanges the regional forest and other land cover totals of bioh stay
+parallel to the input (constant offset) and are allocated onto the
+recalculated bioh (toolParallelBiohCoverTotals). For the
+other harmonizations bioh of clusters whose harmonized harvest area is zero
+is redistributed to clusters with harvest area in the same region, falling
+back to the global pool (toolRedistributeBioh).
 Harmonize absolute fertilizer in Tg yr-1, then convert to fertilizer rate
 in kg ha-1 yr-1. For absoluteChanges the tonnage changes of the input since
 the harmonization year are applied regionally, projected onto the harmonized

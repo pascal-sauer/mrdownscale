@@ -24,8 +24,8 @@ input and target data}
 }
 \value{
 harmonized data set as magpie object with data from target for years
-  up to and including the harmonization year and absolute changes from input
-  relative to the harmonization year afterwards
+up to and including the harmonization year and absolute changes from input
+relative to the harmonization year afterwards
 }
 \description{
 Tool function for creating a harmonized data set by applying the absolute

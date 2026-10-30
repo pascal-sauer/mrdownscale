@@ -1,3 +1,4 @@
+^\.git$
 ^.*\.Rproj$
 ^.*CITATION.cff$
 ^.lintr$
