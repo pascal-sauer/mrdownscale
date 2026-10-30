@@ -1,9 +1,9 @@
 #' toolRedistributeOverCap
 #'
 #' Enforce a cap on per-cluster amounts by redistributing the amount of every
-#' cluster above it onto the remaining headroom of the clusters of the same
+#' cluster above it over the remaining headroom of the clusters of the same
 #' region and variable, or of the global pool for those variables in which a
-#' region cannot absorb its own excess. Receivers only receive a share
+#' region cannot compensate for its own excess. Receivers only receive a share
 #' proportional to their own headroom, so a single pass suffices and no one
 #' overshoots. Variables in which not even the global pool has enough headroom
 #' are left unchanged, so that the amount totals stay intact and the caller can
@@ -11,11 +11,11 @@
 #'
 #' @param xAmount amounts per cluster
 #' @param capAmount cap per cluster, in the same unit as xAmount
-#' @param warnMessage message of the warn check whether regions absorb their own excess
+#' @param warnMessage message of the warn check whether regions compensate for their own excess
 #' @return amounts per cluster, capped, with the totals of the feasible variables preserved
 #'
 #' @author Pascal Sauer
-toolRedistributeOverCap <- function(xAmount, capAmount, warnMessage = "Regions absorb their own excess") {
+toolRedistributeOverCap <- function(xAmount, capAmount, warnMessage = "Regions compensate for their own excess") {
   excess <- pmax(xAmount - capAmount, 0)
   spare <- pmax(capAmount - xAmount, 0)
 
@@ -27,7 +27,7 @@ toolRedistributeOverCap <- function(xAmount, capAmount, warnMessage = "Regions a
   spare <- spare * feasible
   globalExcess <- globalExcess * feasible
 
-  # per variable, the global pool only where a region cannot absorb its own excess
+  # per variable, the global pool only where a region cannot compensate for its own excess
   regionExcess <- dimSums(excess, 1.2)
   regionSpare <- dimSums(spare, 1.2)
   useGlobal <- dimSums(regionExcess > regionSpare, 1) > 0

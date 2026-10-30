@@ -125,7 +125,7 @@ test_that("toolHarmonizeAbsoluteChanges scales all categories except urban", {
 
   # the forest group is scaled down so that it keeps its total area of 35 Mha:
   # the non-primary member secdn is scaled to zero first, then primf and primn
-  # absorb the remaining 9 Mha proportionally from their 44 Mha total,
+  # compensate for the remaining 9 Mha proportionally from their 44 Mha total,
   # urban is untouched and pastr does not need any further scaling
   expect_equal(as.vector(out["reg.five", 2025, c("primf", "primn", "secdf", "secdn")]),
                c(40 * 35 / 44, 4 * 35 / 44, 0, 0))
@@ -151,7 +151,7 @@ test_that("toolHarmonizeAbsoluteChanges protects primary land from compensation 
                                                         constantTotal = TRUE))
   out <- run$value
 
-  # the 25 Mha excess is absorbed by secdf, secdn, pltns and pastr (factor 12/17),
+  # the 25 Mha excess is compensated for by secdf, secdn, pltns and pastr (factor 12/17),
   # primf and primn stay at their target values
   expect_equal(as.vector(out["reg.prim", 2025, ]),
                c(30, 10, 180 / 17, 120 / 17, 0, 60 / 17, 660 / 17, 0, 0, 0, 0, 0))
@@ -434,7 +434,7 @@ test_that("toolHarmonizeAbsoluteChanges compensates negative crop by its rainfed
                                                         constantTotal = TRUE))
   out <- run$value
 
-  # raw c3ann_rainfed drops to -10 Mha, the deficit is absorbed by
+  # raw c3ann_rainfed drops to -10 Mha, the deficit is compensated for by
   # c3ann_irrigated, all other categories are untouched
   expect_equal(as.vector(out["reg.comp", 2025, c("pastr", "c3ann_rainfed", "c3ann_irrigated",
                                                  "c4ann_rainfed", "c4ann_irrigated")]),
@@ -504,7 +504,7 @@ test_that("toolHarmonizeAbsoluteChanges compensates negative biofuel crop by its
   xInput <- new.magpie("reg.bio", years = c(2020, 2025), names = bioItems, fill = 0)
   xInput["reg.bio", 2020, ] <- c(0, 0, 0, 0, 0, 0, 10, 0, 70, 10, 7, 3)
   # same scenario as the base-crop pair test: c3ann_rainfed_biofuel_1st_gen loses
-  # 40 Mha, more than its 20 Mha irrigated twin can cover, c4ann absorbs the rest
+  # 40 Mha, more than its 20 Mha irrigated twin can cover, c4ann compensates for the rest
   xInput["reg.bio", 2025, ] <- c(0, 0, 0, 0, 0, 0, 10, 0, 30, 10, 7, 43)
 
   run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
