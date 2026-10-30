@@ -1,7 +1,8 @@
-test_that("toolParallelBiohCoverTotals moves stranded bioh over the global pool, failing the regional check", {
+test_that("toolParallelBiohCoverTotals leaves stranded bioh unallocated when no global room is left", {
   # regone.1 targets 2500 + (2100 - 3500) = 1100 forest bioh in 2025/2030 but
-  # its recalculated bioh is zero, so it hosts nothing and its target
-  # moves over the global pool to regtwo.1 with its recalculated 1000/1000
+  # its recalculated bioh is zero, so it hosts nothing; regtwo.1's own share of
+  # 2000 already fills its whole recalculated weight 1000 + 1000, leaving no
+  # remaining room, so the stranded 1100 stays unallocated
   cells <- c("regone.1", "regtwo.1")
   items <- c("bioh.primf", "bioh.secmf")
 
@@ -25,12 +26,12 @@ test_that("toolParallelBiohCoverTotals moves stranded bioh over the global pool,
     result <- toolParallelBiohCoverTotals(xInput, xTarget, biohCalculated, 2020)
   )
   expect_true(any(grepl("Check failed.*Regional forest bioh totals are parallel", conditions$conditions)))
-  expect_false(any(grepl("Check failed.*Global bioh totals are parallel", conditions$conditions)))
+  expect_true(any(grepl("Check failed.*Global bioh totals are parallel", conditions$conditions)))
 
-  # regtwo.1 hosts its own 2000 plus the pooled 1100 of regone, split by its
-  # recalculated item weights 1000/1000
+  # regtwo.1 hosts only its own 2000, split by its recalculated item weights
+  # 1000/1000, the stranded 1100 of regone finds no room and is lost
   expect_equal(as.vector(result["regone.1", c(2025, 2030), ]), rep(0, 4))
-  expect_equal(as.vector(result["regtwo.1", c(2025, 2030), ]), rep((2000 + 1100) / 2, 4))
+  expect_equal(as.vector(result["regtwo.1", c(2025, 2030), ]), rep(2000 / 2, 4))
 
   # the target years up to the harmonization year are returned unchanged
   expect_equal(as.vector(result[, 2010, ]), as.vector(xTarget[, 2010, ]))

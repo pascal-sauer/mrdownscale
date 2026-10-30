@@ -520,6 +520,67 @@ test_that("the global fallback is scoped to the offending crop group and year ta
   expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
 })
 
+test_that("zeroing cropland-less fertilizer tonnages matches clusters by name", {
+  # the mocked nonland input lists its clusters in the reversed order of the
+  # nonland target: the projected tonnages follow the target's item order, the
+  # cropland mask the input's, so a positional mask zeroes the wrong cluster
+  xInput <- new.magpie(c("regtwo.1", "regone.1"), years = c(2020, 2025), names = nonlandItems, fill = 0)
+  xInput[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xInput[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xInput[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xInput["regone.1", , "fertilizer.c3ann"] <- c(10, 10)
+  xInput["regtwo.1", , "fertilizer.c3ann"] <- c(10, 10)
+  attr(xInput, "geometry") <- "point"
+  attr(xInput, "crs") <- "EPSG:4326"
+  getSets(xInput) <- c("region", "id", "year", "category", "data")
+
+  # target rate of 100 kg ha-1 yr-1 on 100 Mha anchors 10 Tg per cluster
+  xTarget <- new.magpie(c("regone.1", "regtwo.1"), years = c(2010, 2020), names = nonlandItems, fill = 0)
+  xTarget[, , c("bioh.primf", "bioh.secmf")] <- 1000
+  xTarget[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
+  xTarget[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
+  xTarget[, , "fertilizer.c3ann"] <- 100
+  getSets(xTarget) <- c("region", "id", "year", "category", "data")
+
+  landTarget <- new.magpie(c("regone.1", "regtwo.1"), years = c(2010, 2020), names = "c3ann", fill = 100)
+  landHarmonized <- new.magpie(c("regone.1", "regtwo.1"), years = c(2010, 2020, 2025),
+                               names = "c3ann", fill = 100)
+  # regtwo.1 loses all its cropland in 2025, so only its 10 Tg anchor must be zeroed
+  landHarmonized["regtwo.1", 2025, ] <- 0
+
+  harvestArea <- new.magpie(c("regone.1", "regtwo.1"), years = c(2010, 2020, 2025),
+                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf"), fill = 1)
+  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
+
+  local_mocked_bindings(
+    calcOutput = function(name, ...) {
+      switch(name,
+             NonlandInputRecategorized = xInput,
+             NonlandTargetExtrapolated = xTarget,
+             LandTargetExtrapolated = landTarget,
+             LandHarmonized = landHarmonized,
+             WoodHarvestAreaHarmonized = harvestArea,
+             stop("unexpected calcOutput call for \"", name, "\""))
+    }
+  )
+
+  conditions <- captureConditions(
+    result <- calcNonlandHarmonized(input = "magpie", target = "luh3",
+                                    harmonizationPeriod = c(2020, 2020),
+                                    harmonization = "absoluteChanges")
+  )
+  # regtwo lost the land holding its tonnes, its warn fires, while the global
+  # parallelism check must stay green
+  expect_true(any(grepl("Check failed.*cropland left to hold it", conditions$conditions)))
+  expect_false(any(grepl("Check failed.*Global fertilizer totals are parallel", conditions$conditions)))
+  x <- result$x
+
+  # only regtwo's tonnes are zeroed, its unholdable target falls back globally
+  # onto regone, doubling its 10 Tg anchor to a 200 kg ha-1 yr-1 rate
+  expect_equal(as.vector(x["regone.1", 2025, "fertilizer"]), 200)
+  expect_equal(as.vector(x["regtwo.1", 2025, "fertilizer"]), 0)
+})
+
 test_that("clusters with zero harvest area host no bioh for absoluteChanges", {
   # identical to the first test, except reg.one loses its harmonized harvest
   # area after 2020 while keeping positive bioh: under absoluteChanges the
@@ -822,11 +883,12 @@ test_that("absoluteChanges allocates regional bioh proportional to recalculated 
   expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
 })
 
-test_that("absoluteChanges moves stranded bioh over the global pool, failing the regional check", {
+test_that("absoluteChanges leaves stranded bioh unallocated when no global room is left, failing both checks", {
   # regone.1 keeps positive input bioh but loses all its harvest area after 2020
   # and has no receiver in its region: its parallel target of 2500 - 1400
-  # = 1100 kg C yr-1 moves over the global pool to regtwo.1, so the regional
-  # check fails by design for this pair while the global one stays green
+  # = 1100 kg C yr-1 finds no global room, because regtwo.1's own share of
+  # 2000 already fills its recalculated weight, so the stranded 1100 stays
+  # unallocated and the regional and global checks fail by design
   xInput <- new.magpie(c("regone.1", "regtwo.1"), years = c(2020, 2025, 2030), names = nonlandItems, fill = 0)
   xInput["regone.1", 2020, c("bioh.primf", "bioh.secmf")] <- c(2000, 1500)
   xInput["regone.1", c(2025, 2030), "bioh.primf"] <- 500
@@ -877,15 +939,16 @@ test_that("absoluteChanges moves stranded bioh over the global pool, failing the
                                     harmonization = "absoluteChanges")
   )
   expect_true(any(grepl("Check failed.*Regional forest bioh totals are parallel", conditions$conditions)))
-  expect_false(any(grepl("Check failed.*Global bioh totals are parallel", conditions$conditions)))
+  expect_true(any(grepl("Check failed.*Global bioh totals are parallel", conditions$conditions)))
   x <- result$x
 
-  # regone.1 hosts nothing, regtwo.1 hosts its own 2000 plus the pool's 1100
+  # regone.1 hosts nothing, regtwo.1 hosts only its own 2000, the stranded
+  # 1100 finds no remaining room and is lost
   biohRegion <- dimSums(x[, c(2025, 2030), "bioh"], c(1.2, 3))
   expect_equal(as.numeric(biohRegion["regone", , ]), rep(0, 2))
-  expect_equal(as.numeric(biohRegion["regtwo", , ]), rep(2000 + 1100, 2))
-  expect_equal(as.numeric(dimSums(x[, 2025, "bioh"], c(1, 2, 3))), 3100)
-  expect_equal(as.numeric(dimSums(x[, 2030, "bioh"], c(1, 2, 3))), 3100)
+  expect_equal(as.numeric(biohRegion["regtwo", , ]), rep(2000, 2))
+  expect_equal(as.numeric(dimSums(x[, 2025, "bioh"], c(1, 2, 3))), 2000)
+  expect_equal(as.numeric(dimSums(x[, 2030, "bioh"], c(1, 2, 3))), 2000)
 })
 
 test_that("absoluteChanges keeps regional forest and other land cover totals of bioh parallel to the input", {

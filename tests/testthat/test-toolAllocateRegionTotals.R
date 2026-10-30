@@ -43,6 +43,50 @@ test_that("toolAllocateRegionTotals pools the target of weightless regions globa
   expect_equal(as.numeric(dimSums(allocated, c(1, 3))), as.numeric(dimSums(targetRegionAmount, c(1, 3))))
 })
 
+test_that("toolAllocateRegionTotals spreads stranded targets only over the remaining room", {
+  clusters <- c("regone.1", "regone.2", "regtwo.1", "regthree.1")
+  targetRegionAmount <- new.magpie(c("regone", "regtwo", "regthree"), years = 2025,
+                                   names = "amount.c3ann", fill = 0)
+  targetRegionAmount["regone", , ] <- 90
+  targetRegionAmount["regtwo", , ] <- 10
+  targetRegionAmount["regthree", , ] <- 20
+  clusterWeight <- new.magpie(clusters, years = 2025, names = "amount.c3ann", fill = 0)
+  clusterWeight["regone.1", , ] <- 60
+  clusterWeight["regone.2", , ] <- 30
+  clusterWeight["regthree.1", , ] <- 40
+  getSets(targetRegionAmount) <- c("region", "year", "category", "data")
+  getSets(clusterWeight) <- c("region", "id", "year", "category", "data")
+
+  # regone's own target fills both of its clusters exactly, so the stranded 10
+  # of the weightless regtwo may only go to the remaining room at regthree
+  conditions <- captureConditions(allocated <- toolAllocateRegionTotals(targetRegionAmount, clusterWeight))
+  expect_true(any(grepl("Check failed.*Regions with target totals > 0 have hosting capacity",
+                        conditions$conditions)))
+  expect_equal(as.vector(allocated["regone.1", , ]), 60)
+  expect_equal(as.vector(allocated["regone.2", , ]), 30)
+  expect_equal(as.vector(allocated["regtwo.1", , ]), 0)
+  expect_equal(as.vector(allocated["regthree.1", , ]), 30)
+  expect_true(all(as.vector(allocated) <= as.vector(clusterWeight) + 10^-10))
+})
+
+test_that("toolAllocateRegionTotals has nowhere to put stranded targets where all weights are zero", {
+  clusters <- c("regone.1", "regtwo.1")
+  targetRegionAmount <- new.magpie(c("regone", "regtwo"), years = 2025, names = "amount.c3ann", fill = 0)
+  targetRegionAmount["regone", , ] <- 5
+  targetRegionAmount["regtwo", , ] <- 7
+  clusterWeight <- new.magpie(clusters, years = 2025, names = "amount.c3ann", fill = 0)
+  getSets(targetRegionAmount) <- c("region", "year", "category", "data")
+  getSets(clusterWeight) <- c("region", "id", "year", "category", "data")
+
+  # without any global room the pooled target cannot be allocated at all (the
+  # caller has to account for the loss), and must not turn into NaN
+  conditions <- captureConditions(allocated <- toolAllocateRegionTotals(targetRegionAmount, clusterWeight))
+  expect_true(any(grepl("Check failed.*Regions with target totals > 0 have hosting capacity",
+                        conditions$conditions)))
+  expect_equal(as.vector(allocated), c(0, 0))
+  expect_false(anyNA(as.vector(allocated)))
+})
+
 test_that("toolAllocateRegionTotals never puts anything on weightless clusters", {
   clusters <- c("regone.1", "regone.2")
   targetRegionAmount <- new.magpie("regone", years = 2025, names = "amount.c3ann", fill = 24)
