@@ -8,13 +8,14 @@
 #'
 #' - Regional cover target: anchor from the target data in the harmonization
 #'   year plus the input change relative to that year.
-#' - Floor regional targets at zero and rescale the rest onto the raw global
-#'   target, so regions with a loss target receive nothing while the global
-#'   cover total stays input parallel.
-#' - Floor a negative global cover target at zero and charge the clipped loss
-#'   to the other cover, keeping the global total over all covers parallel; the
-#'   regional targets rescaled by this charging are the balanced targets, their
-#'   global sums the balanced global target.
+#' - Set negative regional targets to zero. This raises their sum. To
+#'   compensate, scale the regional targets > 0 down, so the global cover
+#'   total equals the raw global target. Regions set to zero get nothing.
+#' - Set a negative global cover target to zero. The clipped loss is
+#'   compensated for by the other cover: its regional targets are scaled by
+#'   one common factor, so the global total over both covers stays input
+#'   parallel. The scaled targets are the balanced targets, the resulting
+#'   global total the balanced global target.
 #' - Keep the primary harvest land-derived and allocate the remaining target
 #'   onto the clusters proportional to their harvestable secondary land, so the
 #'   physical yearly cap holds by construction.
@@ -27,12 +28,12 @@
 #' regionally and globally, and so does the sum over both covers. When that
 #' is impossible, parallelism is broken as follows:
 #'
-#' 1. A regional target that turns negative is floored to zero and the
-#'    remaining regions are rescaled, keeping the global cover total parallel;
-#'    regional parallelism breaks.
-#' 2. A cover whose global target turns negative is floored to zero and the
-#'    loss charged to the other cover: that cover's global total is no longer
-#'    parallel, the sum over both covers still is.
+#' 1. A negative regional target is set to zero and the targets > 0 of the
+#'    other regions are scaled down. The global cover total stays parallel,
+#'    the parallelism of that region is lost.
+#' 2. A cover whose global target is negative is set to zero, and the clipped
+#'    loss is compensated for by the other cover. The global total of the
+#'    cover set to zero is no longer parallel, the sum over both covers is.
 #' 3. Where harvestable land is too little, harvest moves into the other
 #'    cover's headroom, region first and then globally: first regional per
 #'    cover parallelism is lost, then global per cover parallelism, the sum
@@ -86,9 +87,9 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
     inputCover[[cover]] <- dimSums(inputRegion[, , c(prim, secd)], 3)
     targetCover[[cover]] <- dimSums(targetRegion[, , c(prim, secd)], 3)
   }
-  # floor the regional cover targets at zero, rescale the rest onto the raw
-  # global target and charge floored negative global cover targets to the
-  # other cover, keeping the global total over all covers input parallel
+  # set negative regional cover targets to zero and scale targets > 0 down
+  # onto the raw global target; a negative global cover target is set to zero
+  # and compensated for by the other cover, keeping the total input parallel
   coverTotals <- toolParallelCoverTargets(inputCover, targetCover, hy)
   coverTarget <- coverTotals$coverTargets
   coverGlobalBalanced <- coverTotals$coverGlobalBalanced

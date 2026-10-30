@@ -62,8 +62,8 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
                                kgCPerMhaTarget, fertilizerTgTarget)
 
   if (harmonization == "absoluteChanges") {
-    # bioh is not harmonized per cluster, its regional cover targets are
-    # allocated onto the recalculated bioh below instead
+    # bioh is not harmonized per cluster; instead, the regional cover targets
+    # are distributed over the clusters below (weight: recalculated bioh)
     harmonizationInput <- harmonizationInput[, , "bioh", invert = TRUE]
     harmonizationTarget <- harmonizationTarget[, , "bioh", invert = TRUE]
   }
@@ -128,7 +128,7 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
 
   if (harmonization == "absoluteChanges") {
     # the regional cover targets stay parallel to the input and are
-    # allocated onto the recalculated bioh directly
+    # distributed over the clusters directly (weight: recalculated bioh)
     out <- mbind(out, toolParallelBiohCoverTotals(xInput, xTarget, biohCalculated, hp[1]))
   } else {
     # redistribute bioh from clusters without harvest area
