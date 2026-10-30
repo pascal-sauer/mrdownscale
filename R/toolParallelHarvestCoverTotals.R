@@ -8,31 +8,31 @@
 #'
 #' - Regional cover target: anchor from the target data in the harmonization
 #'   year plus the input change relative to that year.
-#' - Floor regional targets at zero and rescale the rest onto the raw global
-#'   target, so regions with a loss target receive nothing while the global
-#'   cover total stays input parallel.
-#' - Floor a negative global cover target at zero and charge the clipped loss
-#'   to the other cover, keeping the global total over all covers parallel; the
-#'   regional targets rescaled by this charging are the balanced targets, their
-#'   global sums the balanced global target.
-#' - Keep the primary harvest land-derived and allocate the remaining target
-#'   onto the clusters proportional to their harvestable secondary land, so the
-#'   physical yearly cap holds by construction.
-#' - Move harvest that the own cover cannot host into the headroom of the other
-#'   cover, region first and then globally; only what no cover can host
-#'   anywhere becomes excess.
+#' - Regional targets are set to zero where negative and the rest is rescaled
+#'   onto the raw global target, so regions with a loss target receive nothing
+#'   while the global cover total stays input parallel.
+#' - Set a negative global cover target to zero and compensate the clipped loss
+#'   with the other cover, keeping the global total over all covers parallel.
+#'   The regional targets rescaled as a result of this compensation are the
+#'   balanced targets, their global sums the balanced global target.
+#' - Keep the primary harvest land-derived and distribute the remaining target
+#'   over the clusters (weight: their harvestable secondary land), so the
+#'   physical yearly cap for primary harvest holds by construction.
+#' - Move harvest above the own cover's cap into the headroom of the other
+#'   cover, region first and then globally. Only what fits nowhere becomes
+#'   excess.
 #'
 #' Output properties: In the ideal case, the harvest area of
 #' each cover stays parallel to the input after the harmonization year,
 #' regionally and globally, and so does the sum over both covers. When that
 #' is impossible, parallelism is broken as follows:
 #'
-#' 1. A regional target that turns negative is floored to zero and the
+#' 1. A regional target that turns negative is set to zero and the
 #'    remaining regions are rescaled, keeping the global cover total parallel;
 #'    regional parallelism breaks.
-#' 2. A cover whose global target turns negative is floored to zero and the
-#'    loss charged to the other cover: that cover's global total is no longer
-#'    parallel, the sum over both covers still is.
+#' 2. A cover whose global target turns negative is set to zero and the loss
+#'    is compensated for by the other cover: that cover's global total is no
+#'    longer parallel, the sum over both covers still is.
 #' 3. Where harvestable land is too little, harvest moves into the other
 #'    cover's headroom, region first and then globally: first regional per
 #'    cover parallelism is lost, then global per cover parallelism, the sum
@@ -58,9 +58,9 @@
 #' @param harmonizationYear integer year the input changes are measured from
 #' @return list with the secondary and plantation harvest area of the years
 #'   after the harmonization year (`secdHarv`) and the excess harvest area that
-#'   not even the other cover can host (`excessSecdHarvest`); the tool checks
-#'   its own allocation for regional and global parallelism of every cover to
-#'   the input
+#'   does not fit even in the other cover (`excessSecdHarvest`); the tool
+#'   checks its own allocation for regional and global parallelism of every
+#'   cover to the input
 #'
 #' @author Pascal Sauer
 toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmonized, harmonizationYear) {
@@ -87,9 +87,9 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
     targetCover <- dimSums(targetRegion[, , c(prim, secd)], 3)
     target <- setYears(targetCover[, hy, ], NULL) +
       (inputCover[, futureYears, ] - setYears(inputCover[, hy, ], NULL))
-    # global first allocation: floor the regional targets at zero and
+    # global first allocation: set negative regional targets to zero and
     # scale the rest onto the raw global target, keeping the global cover
-    # total input parallel even where regional targets had to be floored
+    # total input parallel even where regional targets had to be set to zero
     globalTarget <- dimSums(target, 1)
     positiveTotal <- dimSums(pmax(target, 0), 1)
     scale <- pmax(globalTarget, 0) / positiveTotal
@@ -98,7 +98,7 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
     coverGlobal[[cover]] <- globalTarget
   }
 
-  # the negative global cover target floored to zero is charged to the
+  # the negative global cover target set to zero is compensated for by the
   # other cover, so the global total over all covers stays input parallel
   globalTotal <- coverGlobal$forest + coverGlobal$other
   positiveGlobalTotal <- pmax(coverGlobal$forest, 0) + pmax(coverGlobal$other, 0)
@@ -114,8 +114,8 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
     requiredSecd <- coverTarget[[cover]] - dimSums(dimSums(primHarv[, , covers[[cover]]$prim], 1.2), 3)
     requiredSecd[requiredSecd < 0] <- 0
 
-    # allocate each region's cover target onto its clusters proportional to
-    # their harvestable land (item split proportional to the item caps), the
+    # distribute each region's cover target over its clusters (weight: their
+    # harvestable land, item split proportional to the item caps), the
     # clamped remainder above the cap flowing into the other cover's headroom
     msgHold <- paste0("Regions with target ", cover, " harvest area > 0 have harvestable land left to hold it")
     maxHarvItems <- maxHarv[, , secd]
@@ -123,7 +123,7 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
     itemShare <- maxHarvItems / clusterCap
     itemShare[is.na(itemShare)] <- 0
     clusterLevelAlloc <- toolAllocateRegionTotals(requiredSecd, clusterCap, msgHold)
-    # stranded target that no remaining cluster room could host anywhere is
+    # stranded target that fits nowhere in the remaining cluster room is
     # pure loss, reported as excess proportional to the cluster caps
     # (uniformly where no cluster has any cap)
     unplaced <- pmax(dimSums(requiredSecd, 1) - dimSums(clusterLevelAlloc, 1), 0)
@@ -136,24 +136,24 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
     coverItems[[cover]] <- pmin(allocatedSecd, maxHarvItems)
   }
 
-  # harvest of one cover that its own harvestable land cannot host is shifted
-  # into the headroom of the other cover, region first and then globally,
-  # only what remains unhostable anywhere is reported as excess
+  # harvest above the own cap is shifted into the headroom of the other cover,
+  # region first and then globally, only what fits nowhere is reported as
+  # excess
   for (cover in names(covers)) {
     other <- setdiff(names(covers), cover)
     for (margin in c(1.2, 1)) {
       excess <- pmax(coverTotal[[cover]] - coverCap[[cover]], 0)
       headroomItems <- pmax(maxHarv[, , covers[[other]]$secd] - coverItems[[other]], 0)
       headroom <- dimSums(headroomItems, 3)
-      hostable <- dimSums(headroom, margin) / dimSums(excess, margin)
-      hostable[is.na(hostable)] <- 0
-      hostable[hostable > 1] <- 1
+      fitShare <- dimSums(headroom, margin) / dimSums(excess, margin)
+      fitShare[is.na(fitShare)] <- 0
+      fitShare[fitShare > 1] <- 1
       filled <- dimSums(excess, margin) / dimSums(headroom, margin)
       filled[is.na(filled)] <- 0
       filled[filled > 1] <- 1
-      coverTotal[[cover]] <- coverTotal[[cover]] - excess * hostable
+      coverTotal[[cover]] <- coverTotal[[cover]] - excess * fitShare
       coverTotal[[other]] <- coverTotal[[other]] + headroom * filled
-      # the transferred harvest lands on the clusters of the other cover within
+      # the clusters of the other cover receive the transferred harvest within
       # their caps, proportional to their remaining headroom
       coverItems[[other]] <- coverItems[[other]] + headroomItems * filled
     }

@@ -107,7 +107,7 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   # adapt bioh to harmonized harvest area
   kgCPerMhaHarmonized <- out[, , getItems(kgCPerMhaTarget, 3)]
   if (harmonization == "absoluteChanges") {
-    # floor clamped zero rates to the smallest positive rate, as done for input and target
+    # set clamped zero rates to the smallest positive rate, as done for input and target
     kgCPerMhaHarmonized[kgCPerMhaHarmonized == 0] <- min(kgCPerMhaHarmonized[kgCPerMhaHarmonized > 0])
   }
   stopifnot(0 < kgCPerMhaHarmonized, kgCPerMhaHarmonized < Inf)
