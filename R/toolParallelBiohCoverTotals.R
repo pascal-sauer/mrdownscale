@@ -31,45 +31,24 @@ toolParallelBiohCoverTotals <- function(xInput, xTarget, biohCalculated, harmoni
   yearsAfterHy <- yearsAfterHy[yearsAfterHy > harmonizationYear]
   covers <- list(forest = c("bioh.primf", "bioh.secmf", "bioh.secyf", "bioh.pltns"),
                  other = c("bioh.primn", "bioh.secnf"))
-  targetCoverBioh <- list()
-  coverGlobal <- list()
+  inputCover <- list()
+  targetCover <- list()
   coverItems <- list()
   for (cover in names(covers)) {
     items <- intersect(covers[[cover]], getItems(biohCalculated, 3))
-    if (length(items) == 0) {
-      next
-    }
-    inputCoverBioh <- dimSums(xInput[, c(harmonizationYear, yearsAfterHy), items], c(1.2, 3))
-    coverTarget <- setYears(dimSums(xTarget[, harmonizationYear, items], c(1.2, 3)), NULL) +
-      (inputCoverBioh[, yearsAfterHy, ] - setYears(inputCoverBioh[, harmonizationYear, ], NULL))
-    # global first allocation: floor the regional cover targets at zero and
-    # scale the rest onto the raw global target, keeping the global cover total
-    # parallel even where regional targets had to be floored
-    globalTarget <- dimSums(coverTarget, 1)
-    positiveTotal <- dimSums(pmax(coverTarget, 0), 1)
-    scale <- pmax(globalTarget, 0) / positiveTotal
-    scale[is.na(scale)] <- 0
-    targetCoverBioh[[cover]] <- pmax(coverTarget, 0) * scale
-    coverGlobal[[cover]] <- globalTarget
+    inputCover[[cover]] <- dimSums(xInput[, c(harmonizationYear, yearsAfterHy), items], c(1.2, 3))
+    targetCover[[cover]] <- dimSums(xTarget[, harmonizationYear, items], c(1.2, 3))
     coverItems[[cover]] <- items
   }
+  # the cover targets are floored, scaled and balanced such that the global
+  # cover totals stay input parallel
+  coverTotals <- toolParallelCoverTargets(inputCover, targetCover, harmonizationYear)
+  targetCoverBioh <- coverTotals$coverTargets
+  coverGlobalBalanced <- coverTotals$coverGlobalBalanced
 
-  # the negative global cover target floored to zero is charged to the
-  # other covers, so the global total over all covers stays input parallel
-  globalTotal <- Reduce(`+`, coverGlobal)
-  positiveGlobalTotal <- Reduce(`+`, lapply(coverGlobal, function(globalTarget) pmax(globalTarget, 0)))
-  balanceFactor <- pmax(globalTotal, 0) / positiveGlobalTotal
-  balanceFactor[is.na(balanceFactor)] <- 1
-  coverGlobalBalanced <- pmax(globalTotal, 0)
-  for (cover in names(targetCoverBioh)) {
-    targetCoverBioh[[cover]] <- targetCoverBioh[[cover]] * balanceFactor
-  }
-
-  # allocate every cover's regional target directly onto the
-  # recalculated bioh, proportional to its weight (split onto the items by
-  # their recalculated values, which together is proportional to them), so
-  # clusters without harvest area host nothing and the regional cover totals
-  # hold by construction
+  # allocate every cover's regional target onto the recalculated bioh
+  # proportional to its weight (item split by the recalculated values), so
+  # clusters without harvest area host nothing and the regional totals hold
   allocatedCoverBioh <- list()
   for (cover in names(targetCoverBioh)) {
     items <- coverItems[[cover]]

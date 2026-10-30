@@ -73,8 +73,8 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
   # its secondary/plantation pool, target and allocation work per cover
   covers <- list(forest = list(prim = "primf", secd = c("secdf", "pltns")),
                  other = list(prim = "primn", secd = "secdn"))
-  coverTarget <- list()
-  coverGlobal <- list()
+  inputCover <- list()
+  targetCover <- list()
   coverItems <- list()
   coverTotal <- list()
   coverCap <- list()
@@ -83,31 +83,15 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
   for (cover in names(covers)) {
     prim <- covers[[cover]]$prim
     secd <- covers[[cover]]$secd
-    inputCover <- dimSums(inputRegion[, , c(prim, secd)], 3)
-    targetCover <- dimSums(targetRegion[, , c(prim, secd)], 3)
-    target <- setYears(targetCover[, hy, ], NULL) +
-      (inputCover[, futureYears, ] - setYears(inputCover[, hy, ], NULL))
-    # global first allocation: floor the regional targets at zero and
-    # scale the rest onto the raw global target, keeping the global cover
-    # total input parallel even where regional targets had to be floored
-    globalTarget <- dimSums(target, 1)
-    positiveTotal <- dimSums(pmax(target, 0), 1)
-    scale <- pmax(globalTarget, 0) / positiveTotal
-    scale[is.na(scale)] <- 0
-    coverTarget[[cover]] <- pmax(target, 0) * scale
-    coverGlobal[[cover]] <- globalTarget
+    inputCover[[cover]] <- dimSums(inputRegion[, , c(prim, secd)], 3)
+    targetCover[[cover]] <- dimSums(targetRegion[, , c(prim, secd)], 3)
   }
-
-  # the negative global cover target floored to zero is charged to the
-  # other cover, so the global total over all covers stays input parallel
-  globalTotal <- coverGlobal$forest + coverGlobal$other
-  positiveGlobalTotal <- pmax(coverGlobal$forest, 0) + pmax(coverGlobal$other, 0)
-  balanceFactor <- pmax(globalTotal, 0) / positiveGlobalTotal
-  balanceFactor[is.na(balanceFactor)] <- 1
-  coverGlobalBalanced <- pmax(globalTotal, 0)
-  for (cover in names(covers)) {
-    coverTarget[[cover]] <- coverTarget[[cover]] * balanceFactor
-  }
+  # floor the regional cover targets at zero, rescale the rest onto the raw
+  # global target and charge floored negative global cover targets to the
+  # other cover, keeping the global total over all covers input parallel
+  coverTotals <- toolParallelCoverTargets(inputCover, targetCover, hy)
+  coverTarget <- coverTotals$coverTargets
+  coverGlobalBalanced <- coverTotals$coverGlobalBalanced
 
   for (cover in names(covers)) {
     secd <- covers[[cover]]$secd
