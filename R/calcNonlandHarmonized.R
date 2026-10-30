@@ -6,10 +6,11 @@
 #' Wood harvest biomass (bioh) is adapted to the harmonized wood harvest area
 #' by calculating kg C per mega hectare for input and target data and
 #' harmonizing it. This is then multiplied by the harmonized wood harvest area,
-#' and the recalculated bioh drives the per-cluster split of the output. For
-#' absoluteChanges the regional forest and other land cover totals of bioh stay
-#' parallel to the input (constant offset) and are allocated onto the
-#' recalculated bioh (toolParallelBiohCoverTotals). For the
+#' and the recalculated bioh is used as the weight to allocate bioh onto the
+#' clusters. For absoluteChanges the regional forest and other land cover totals
+#' of bioh stay parallel to the input (constant offset) and are allocated onto
+#' the clusters proportional to their recalculated bioh
+#' (toolParallelBiohCoverTotals). For the
 #' other harmonizations bioh of clusters whose harmonized harvest area is zero
 #' is redistributed to clusters with harvest area in the same region, falling
 #' back to the global pool (toolRedistributeBioh).
@@ -61,7 +62,7 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
                                kgCPerMhaTarget, fertilizerTgTarget)
 
   if (harmonization == "absoluteChanges") {
-    # bioh is not harmonized per cluster, its regional cover expectations are
+    # bioh is not harmonized per cluster, its regional cover targets are
     # allocated onto the recalculated bioh below instead
     harmonizationInput <- harmonizationInput[, , "bioh", invert = TRUE]
     harmonizationTarget <- harmonizationTarget[, , "bioh", invert = TRUE]
@@ -127,7 +128,7 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   stopifnot(0 <= biohCalculated, biohCalculated < Inf)
 
   if (harmonization == "absoluteChanges") {
-    # the regional cover expectations stay parallel to the input and are
+    # the regional cover targets stay parallel to the input and are
     # allocated onto the recalculated bioh directly
     out <- mbind(out, toolParallelBiohCoverTotals(xInput, xTarget, biohCalculated, hp[1]))
   } else {
