@@ -58,7 +58,7 @@ test_that("toolParallelHarvestCoverTotals keeps cover targets parallel and alloc
   expect_equal(max(result$excessSecdHarvest), 0)
 })
 
-test_that("toolParallelHarvestCoverTotals reports the excess that not even the other cover can host", {
+test_that("toolParallelHarvestCoverTotals reports the excess that does not fit even in the other cover", {
   # regone grows its forest harvest to 23 while its forest land caps at 12 and
   # the other land cover takes just 1 of the 11 excess: what remains unhostable
   # is dropped at the caps and returned as an excess of 10
@@ -87,7 +87,7 @@ test_that("toolParallelHarvestCoverTotals reports the excess that not even the o
   expect_equal(as.numeric(dimSums(result$excessSecdHarvest, 1)[, 2025, ]), 10)
   expect_equal(as.numeric(dimSums(result$excessSecdHarvest, 1)[, 2030, ]), 10)
 
-  # both clusters end exactly on their caps, the hostable other land target
+  # both clusters end exactly on their caps, the fitting other land target
   # fills its clusters to their caps too
   expect_equal(as.vector(result$secdHarv["regone.1", 2025, c("secdf", "pltns")]), c(5, 1))
   expect_equal(as.vector(result$secdHarv["regone.2", 2025, c("secdf", "pltns")]), c(5, 1))
@@ -125,7 +125,7 @@ test_that("toolParallelHarvestCoverTotals places a stranded target into another 
   expect_equal(max(result$excessSecdHarvest), 0)
 })
 
-test_that("toolParallelHarvestCoverTotals reports the stranded target that no room can host", {
+test_that("toolParallelHarvestCoverTotals reports the stranded target that no room can take", {
   # both regions target forest harvest but there is no forest land at all: the
   # whole stranded forest target finds no room anywhere and must be reported
   # as excess spread over the clusters instead of vanishing silently

@@ -8,7 +8,7 @@ test_that("calcNonlandHarmonized works with harmonization = absoluteChanges", {
   # functions are mocked with synthetic data
   # for reg.one the kg C per Mha of primf drops in the input from 2000 to 500,
   # the raw absolute change is negative, so the harmonizer clamps it to zero
-  # and it is later floored to the smallest positive rate
+  # and it is later set to the smallest positive rate
   xInput <- new.magpie(c("reg.one", "reg.two"), years = c(2020, 2025, 2030), names = nonlandItems, fill = 0)
   xInput["reg.one", 2020, ] <- c(2000, 1500, 1, 1, 3, 1, 400)
   xInput["reg.one", 2025, ] <- c(500, 1600, 1, 1, 2, 2, 500)
@@ -98,10 +98,11 @@ test_that("calcNonlandHarmonized works with harmonization = absoluteChanges", {
 
   # the parallel target 4500 + (4300 - 5500) = 3300 of the merged region
   # (dimSums reads the dots in reg.one/reg.two as cell separators, merging both
-  # cells into one region) is allocated directly onto biohCalculated: the
-  # clamped kg C per Mha rate of 0 for reg.one primf is floored to the smallest
-  # positive rate (1000), giving weights 1000/1600 in reg.one and 1200/1000 in
-  # reg.two, so every cluster holds its weight share of the 4800 of the region
+  # cells into one region) is distributed over its clusters (weight:
+  # recalculated bioh): the clamped kg C per Mha rate of 0 for reg.one primf is
+  # set to the smallest positive rate (1000), giving weights 1000/1600 in
+  # reg.one and 1200/1000 in reg.two, so every cluster gets its weight share of
+  # the 4800 of the region
   expect_equal(as.vector(x["reg.one", 2025, c("bioh.primf", "bioh.secmf")]),
                3300 * c(1000, 1600) / 4800)
   expect_equal(as.vector(x["reg.two", 2025, c("bioh.primf", "bioh.secmf")]),
@@ -300,7 +301,7 @@ test_that("the residual cap pulls collapsed-area cells with anchor tonnage back 
   capTg <- 1200 * 10^-5 * 10^-3
   # the collapsed cell lands exactly on the cap instead of reaching 1e9
   expect_equal(as.vector(x["regone.1", 2025, "fertilizer"]), 1200)
-  # its excess of almost 10 Tg is absorbed by its region partner
+  # its excess of almost 10 Tg is compensated for by its region partner
   expect_equal(as.vector(x["regone.2", 2025, "fertilizer"]),
                (10 + (10 - capTg)) / 100 * (10^9 / 10^6))
   # the partner in the other region is untouched
@@ -584,9 +585,10 @@ test_that("zeroing cropland-less fertilizer tonnages matches clusters by name", 
 test_that("clusters with zero harvest area host no bioh for absoluteChanges", {
   # identical to the first test, except reg.one loses its harmonized harvest
   # area after 2020 while keeping positive bioh: under absoluteChanges the
-  # regional cover target is allocated onto biohCalculated, so the
-  # weightless reg.one clusters host nothing and the whole target of the
-  # merged region lands on reg.two, the only cluster with harvest area
+  # regional cover target is distributed over the clusters (weight:
+  # recalculated bioh), so the weightless reg.one clusters get nothing and the
+  # whole target of the merged region lands on reg.two, the only cluster with
+  # harvest area
   xInput <- new.magpie(c("reg.one", "reg.two"), years = c(2020, 2025, 2030), names = nonlandItems, fill = 0)
   xInput["reg.one", 2020, ] <- c(2000, 1500, 1, 1, 3, 1, 400)
   xInput["reg.one", 2025, ] <- c(500, 1600, 1, 1, 2, 2, 500)
@@ -644,7 +646,7 @@ test_that("clusters with zero harvest area host no bioh for absoluteChanges", {
   expect_equal(as.vector(x["reg.one", c(2025, 2030), paste0("bioh.", c("primf", "secmf"))]),
                rep(0, 4))
 
-  # reg.two hosts the whole parallel target of the merged region (dots
+  # reg.two gets the whole parallel target of the merged region (dots
   # read as cell separators merge the cells into one region totalling
   # 4500 + (4300 - 5500) = 3300) on the only weight left, its own
   # recalculated 1200/1000 split, so 3300 * c(1200, 1000) / 2200
@@ -1330,7 +1332,7 @@ test_that("toolCapFertilizerKgPerHa falls back to the global pool and skips infe
   # regone has no headroom of its own, the pass runs over the global pool:
   # its 30 Tg excess fits into regtwo's 110 Tg spare, reported as a warning
   conditions <- captureConditions(capped <- toolCapFertilizerKgPerHa(fert, land))
-  expect_true(any(grepl("Check failed.*Regions absorb their own fertilizer", conditions$conditions)))
+  expect_true(any(grepl("Check failed.*Regions compensate for their own fertilizer", conditions$conditions)))
   expect_equal(as.vector(capped["regone.1", , ]), 1200)
   expect_equal(as.vector(capped["regtwo.1", , ]), 400)
 

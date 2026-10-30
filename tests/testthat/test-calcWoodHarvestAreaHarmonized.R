@@ -138,7 +138,7 @@ test_that("absoluteChanges keeps regional forest and other land cover totals par
   # collapses below the target anchor: the target is broken down per cover
   # (forest = primf, secdf, pltns, other = primn, secdn) and both cover totals
   # must stay parallel within the region, which the pooled rescaling cannot
-  # achieve because there the forest growth absorbs the other land loss
+  # achieve because there the forest growth compensates for the other land loss
   years <- c(2010, 2020, 2025, 2030)
   land <- makeLand(years, list(
     regone.1 = list(primf = 20, primn = 5, secdf = 50, secdn = 20, pltns = 10),
@@ -174,9 +174,9 @@ test_that("absoluteChanges keeps regional forest and other land cover totals par
   x <- result$x
 
   # the cover targets, rebuilt from the mocks exactly the way the
-  # module promises them: floored target cover total in 2020 plus the regional
-  # input cover delta, the flat land leaves the prim harvest at zero and the
-  # ample secondary land never binds
+  # module promises them: target cover total in 2020 plus the regional
+  # input cover delta, negative values set to zero, the flat land leaves the
+  # prim harvest at zero and the ample secondary land never binds
   covers <- list(forest = c("primf", "secdf", "pltns"), other = c("primn", "secdn"))
   regionTotal <- dimSums(toolAggregateWoodHarvest(x[, c(2025, 2030), ]), 1.2)
   stopifnot(all(unlist(covers) %in% getItems(regionTotal, 3)))
@@ -200,7 +200,7 @@ test_that("absoluteChanges keeps regional forest and other land cover totals par
 })
 
 test_that("absoluteChanges shares a collapsed cover target over the region's harvestable land", {
-  # regone.1's raw absolute change turns negative and is floored to zero, so
+  # regone.1's raw absolute change turns negative and is set to zero, so
   # the region forest target falls short of the summed cluster changes: the
   # target 3.5 is allocated onto the region's harvestable forest land
   # (60:50), giving the collapsing cluster its proportional share of 1.59 instead
@@ -216,7 +216,7 @@ test_that("absoluteChanges shares a collapsed cover target over the region's har
   anchor <- list(primf = 0, primn = 0, secyf = 2, secmf = 0, pltns = 1, secnf = 1)
   xTarget <- makeHarvest(c(2010, 2020), list(regone.1 = anchor, regone.2 = anchor, regtwo.1 = anchor))
   # regone.1's target is only 1 but its input loses 1.5 from 2 to 0.5, so its
-  # raw absolute change of -0.5 turns negative and gets floored to 0
+  # raw absolute change of -0.5 turns negative and is set to 0
   xTarget["regone.1", , "wood_harvest_area.secyf"] <- 1
   xInput <- makeHarvest(c(2020, 2025, 2030),
                         list(regone.1 = list(secyf = c(2, 0.5, 0.5), pltns = 1, secnf = 1),
@@ -317,7 +317,7 @@ test_that("absoluteChanges respects the physical cap and reports the unhostable 
   # regone grows its forest harvest to 20 on regone.1 while the forest land of
   # both clusters together only allows 12 and the 1 Mha yr-1 of other land
   # headroom takes just a part of the 11 excess: what even the other cover
-  # cannot host is dropped at the cap and reported as global excess of 10
+  # does not fit is dropped at the cap and reported as global excess of 10
   years <- c(2010, 2020, 2025, 2030)
   land <- makeLand(years, list(
     regone.1 = list(primf = 20, primn = 5, secdf = 5, secdn = 1, pltns = 1),
@@ -344,7 +344,7 @@ test_that("absoluteChanges respects the physical cap and reports the unhostable 
                                             harmonizationPeriod = c(2020, 2020),
                                             harmonization = "absoluteChanges")
   )
-  # the 10 Mha yr-1 excess that not even the other cover can host is reported
+  # the 10 Mha yr-1 excess that does not fit even in the other cover is reported
   # for both future years, the warn-only parallel checks report the shortfall
   expect_true(any(grepl("Check failed.*Harvest area fits into available land", conditions$conditions)))
   expect_true(any(grepl("global excess harvest area", conditions$conditions)))
@@ -354,7 +354,7 @@ test_that("absoluteChanges respects the physical cap and reports the unhostable 
   expect_true(any(grepl("Check failed.*Global wood harvest area is parallel", conditions$conditions)))
   x <- result$x
 
-  # both clusters are allocated exactly on their caps, the hostable other land
+  # both clusters are allocated exactly on their caps, the fitting other land
   # target fills its clusters to their caps, nothing exceeds the land
   aggOut <- toolAggregateWoodHarvest(x[, -1, ])
   maxHarvest <- toolMaxHarvestPerYear(land, split = FALSE)
@@ -458,8 +458,8 @@ test_that("absoluteChanges allocates cover harvest onto clusters without own har
 
 test_that("absoluteChanges keeps the global cover totals parallel when a regional target is negative", {
   # regone's other land input collapses far below its target anchor, so its
-  # un-floored other land target turns negative while regtwo grows: the
-  # floored regional target must not lift the global cover total above the
+  # raw other land target turns negative while regtwo grows: the
+  # regional target set to zero must not lift the global cover total above the
   # raw global target, regtwo is scaled down to keep it exactly parallel
   years <- c(2010, 2020, 2025, 2030)
   land <- makeLand(years, list(
@@ -468,12 +468,12 @@ test_that("absoluteChanges keeps the global cover totals parallel when a regiona
   ))
 
   # the forest cover stays flat at its anchor in both regions, its targets
-  # never hit a floor and must stay exactly as they are today
+  # never hit zero and must stay exactly as they are today
   xTarget <- makeHarvest(c(2010, 2020), list(
     regone.1 = list(primf = 0, primn = 0, secyf = 2, secmf = 0, pltns = 1, secnf = 4),
     regtwo.1 = list(primf = 0, primn = 0, secyf = 2, secmf = 0, pltns = 1, secnf = 4)
   ))
-  # the un-floored other land targets are regone -5 and regtwo 3 in 2025,
+  # the raw other land targets are regone -5 and regtwo 3 in 2025,
   # regone -5 and regtwo 12 in 2030, giving the raw global targets 3 and 7
   xInput <- makeHarvest(c(2020, 2025, 2030), list(
     regone.1 = list(secyf = 2, pltns = 1, secnf = c(10, 1, 1)),
@@ -500,7 +500,7 @@ test_that("absoluteChanges keeps the global cover totals parallel when a regiona
   regionTotal <- dimSums(toolAggregateWoodHarvest(x[, c(2025, 2030), ]), 1.2)
   otherTotal <- dimSums(regionTotal[, , c("primn", "secdn")], 3)
 
-  # the global other land total equals the un-floored raw global target
+  # the global other land total equals the raw global target
   expect_equal(as.vector(dimSums(otherTotal, 1)[, 2025, ]), 3, tolerance = 10^-9)
   expect_equal(as.vector(dimSums(otherTotal, 1)[, 2030, ]), 7, tolerance = 10^-9)
 
@@ -522,10 +522,10 @@ test_that("absoluteChanges keeps the global cover totals parallel when a regiona
   expect_true(min(x) >= 0)
 })
 
-test_that("absoluteChanges charges a negative global cover target to the other cover", {
+test_that("absoluteChanges compensates a negative global cover target with the other cover", {
   # both regions' other land input collapses so that the global other land
   # target turns negative while the global forest target outweighs
-  # the loss: the floored other land total must be charged to the forest cover
+  # the loss: the other land total set to zero must be compensated for by the forest cover
   # so the global total over all covers stays parallel to the input and the
   # positive forest regions are scaled by the balancing factor 3 / 6
   years <- c(2010, 2020, 2025, 2030)
@@ -536,7 +536,7 @@ test_that("absoluteChanges charges a negative global cover target to the other c
 
   anchor <- list(primf = 0, primn = 0, secyf = 2, secmf = 0, pltns = 1, secnf = 4)
   xTarget <- makeHarvest(c(2010, 2020), list(regone.1 = anchor, regtwo.1 = anchor))
-  # the un-floored cover targets are forest 3 + 3 = 6 in both regions and
+  # the raw cover targets are forest 3 + 3 = 6 in both regions and
   # other -5 in regone plus 2 in regtwo, giving the global totals 6 and -3
   xInput <- makeHarvest(c(2020, 2025, 2030), list(
     regone.1 = list(secyf = 2, pltns = 1, secnf = c(10, 1, 1)),
@@ -564,16 +564,16 @@ test_that("absoluteChanges charges a negative global cover target to the other c
   forestTotal <- dimSums(regionTotal[, , c("primf", "secdf", "pltns")], 3)
   otherTotal <- dimSums(regionTotal[, , c("primn", "secdn")], 3)
 
-  # the floored other land cover gives up its whole global total
+  # the other land cover set to zero gives up its whole global total
   expect_equal(as.vector(dimSums(otherTotal, 1)[, 2025, ]), 0)
   expect_equal(as.vector(dimSums(otherTotal, 1)[, 2030, ]), 0)
 
-  # the forest cover absorbs the charged loss: its global total is the summed
-  # un-floored global target 6 - 3, not its own global target 6
+  # the forest cover compensates for the loss: its global total is the summed
+  # raw global target 6 - 3, not its own global target 6
   expect_equal(as.vector(dimSums(forestTotal, 1)[, 2025, ]), 3, tolerance = 10^-9)
   expect_equal(as.vector(dimSums(forestTotal, 1)[, 2030, ]), 3, tolerance = 10^-9)
 
-  # the global total over both covers equals the un-floored target 3
+  # the global total over both covers equals the raw target 3
   expect_equal(as.vector(dimSums(forestTotal + otherTotal, 1)[, 2025, ]), 3, tolerance = 10^-9)
   expect_equal(as.vector(dimSums(forestTotal + otherTotal, 1)[, 2030, ]), 3, tolerance = 10^-9)
 
@@ -595,7 +595,7 @@ test_that("absoluteChanges cross-cover balancing is a no-op without a negative g
 
   anchor <- list(primf = 0, primn = 0, secyf = 2, secmf = 0, pltns = 1, secnf = 4)
   xTarget <- makeHarvest(c(2010, 2020), list(regone.1 = anchor, regtwo.1 = anchor))
-  # the un-floored cover targets are forest 3 + 3 = 6 and other -5 in
+  # the raw cover targets are forest 3 + 3 = 6 and other -5 in
   # regone plus 20 in regtwo, giving the positive global totals 6 and 15
   xInput <- makeHarvest(c(2020, 2025, 2030), list(
     regone.1 = list(secyf = 2, pltns = 1, secnf = c(10, 1, 1)),
@@ -623,14 +623,14 @@ test_that("absoluteChanges cross-cover balancing is a no-op without a negative g
   forestTotal <- dimSums(regionTotal[, , c("primf", "secdf", "pltns")], 3)
   otherTotal <- dimSums(regionTotal[, , c("primn", "secdn")], 3)
 
-  # both cover global totals equal their own un-floored global targets
+  # both cover global totals equal their own raw global targets
   expect_equal(as.vector(dimSums(forestTotal, 1)[, 2025, ]), 6, tolerance = 10^-9)
   expect_equal(as.vector(dimSums(forestTotal, 1)[, 2030, ]), 6, tolerance = 10^-9)
   expect_equal(as.vector(dimSums(otherTotal, 1)[, 2025, ]), 15, tolerance = 10^-9)
   expect_equal(as.vector(dimSums(otherTotal, 1)[, 2030, ]), 15, tolerance = 10^-9)
 
-  # the loss-making region stays at zero, the growing region keeps its floored
-  # and scaled total, its region partner stays parallel
+  # the loss-making region stays at zero, the growing region keeps its
+  # positive total, its region partner stays parallel
   expect_equal(as.vector(otherTotal["regone", 2025, ]), 0)
   expect_equal(as.vector(otherTotal["regtwo", 2025, ]), 15, tolerance = 10^-9)
   expect_equal(as.vector(forestTotal["regone", 2025, ]), 3, tolerance = 10^-9)

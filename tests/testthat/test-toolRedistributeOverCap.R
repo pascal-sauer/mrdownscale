@@ -31,7 +31,7 @@ test_that("toolRedistributeOverCap falls back to the global pool with a warning"
   # regone has no headroom of its own, its 30 units of excess fit into regtwo's
   # 110 units of spare over the global pool, reported as a warning
   conditions <- captureConditions(redistributed <- toolRedistributeOverCap(xAmount, capAmount))
-  expect_true(any(grepl("Check failed.*Regions absorb their own excess", conditions$conditions)))
+  expect_true(any(grepl("Check failed.*Regions compensate for their own excess", conditions$conditions)))
   expect_equal(as.vector(redistributed["regone.1", , ]), 120)
   expect_equal(as.vector(redistributed["regtwo.1", , ]), 40)
 })

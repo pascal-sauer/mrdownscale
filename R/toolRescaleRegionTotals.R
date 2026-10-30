@@ -9,13 +9,13 @@
 #' @param xAmount amounts per cluster
 #' @param targetRegionAmount target amount total per region and variable
 #' @param warnMessage message of the warn check whether regions with target
-#'   amounts have hosting capacity
+#'   amounts have receiving capacity
 #' @return amounts per cluster, rescaled so the region totals of the variables
 #'   without global fallback match their target
 #'
 #' @author Pascal Sauer
 toolRescaleRegionTotals <- function(xAmount, targetRegionAmount,
-                                    warnMessage = "Regions with target totals have hosting capacity") {
+                                    warnMessage = "Regions with target totals have receiving capacity") {
   actualRegion <- dimSums(xAmount, 1.2)
   factor <- targetRegionAmount / actualRegion
   factor[actualRegion == 0] <- 1

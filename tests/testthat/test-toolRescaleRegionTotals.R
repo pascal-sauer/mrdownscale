@@ -34,7 +34,7 @@ test_that("toolRescaleRegionTotals falls back to a global factor scoped to the o
 
   conditions <- captureConditions(rescaled <- toolRescaleRegionTotals(xAmount, targetRegionAmount))
   # regone expects 10 units in 2025 but holds none, so the warn check fires
-  expect_true(any(grepl("Check failed.*hosting capacity", conditions$conditions)))
+  expect_true(any(grepl("Check failed.*receiving capacity", conditions$conditions)))
 
   # 2025 falls back to the global factor 20/10, doubling regtwo while
   # regone keeps holding nothing
