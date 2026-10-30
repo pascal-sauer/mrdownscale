@@ -5,11 +5,15 @@
 #'
 #' Wood harvest biomass (bioh) is adapted to the harmonized wood harvest area
 #' by calculating kg C per mega hectare for input and target data and
-#' harmonizing it. This is then multiplied by the harmonized wood harvest area
-#' and scaled so the total harmonized bioh is reached. bioh of clusters
-#' whose harmonized harvest area is zero is redistributed to clusters with
-#' harvest area in the same region, falling back to the global pool
-#' (toolRedistributeBioh).
+#' harmonizing it. This is then multiplied by the harmonized wood harvest area,
+#' and the recalculated bioh is used as the weight to allocate bioh onto the
+#' clusters. For absoluteChanges the regional forest and other land cover totals
+#' of bioh stay parallel to the input (constant offset) and are allocated onto
+#' the clusters proportional to their recalculated bioh
+#' (toolParallelBiohCoverTotals). For the
+#' other harmonizations bioh of clusters whose harmonized harvest area is zero
+#' is redistributed to clusters with harvest area in the same region, falling
+#' back to the global pool (toolRedistributeBioh).
 #' Harmonize absolute fertilizer in Tg yr-1, then convert to fertilizer rate
 #' in kg ha-1 yr-1. For absoluteChanges the tonnage changes of the input since
 #' the harmonization year are applied regionally, projected onto the harmonized
@@ -56,6 +60,13 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
                                                     harmonizationPeriod = hp, aggregate = FALSE))
   harmonizationTarget <- mbind(xTarget[, , c("wood_harvest_area", "fertilizer"), invert = TRUE],
                                kgCPerMhaTarget, fertilizerTgTarget)
+
+  if (harmonization == "absoluteChanges") {
+    # bioh is not harmonized per cluster; instead, the regional cover targets
+    # are distributed over the clusters below (weight: recalculated bioh)
+    harmonizationInput <- harmonizationInput[, , "bioh", invert = TRUE]
+    harmonizationTarget <- harmonizationTarget[, , "bioh", invert = TRUE]
+  }
 
   harmonizer <- toolGetHarmonizer(harmonization, constantTotal = FALSE)
   out <- harmonizer(harmonizationInput, harmonizationTarget, harmonizationPeriod = hp)
@@ -115,20 +126,27 @@ calcNonlandHarmonized <- function(input, target, harmonizationPeriod, harmonizat
   getItems(biohCalculated, 3.1) <- sub("kgC_per_Mha$", "bioh", getItems(biohCalculated, 3.1))
   stopifnot(0 <= biohCalculated, biohCalculated < Inf)
 
-  # redistribute bioh from clusters without harvest area
-  out[, , "bioh"] <- toolRedistributeBioh(out[, , "bioh"], biohCalculated)
+  if (harmonization == "absoluteChanges") {
+    # the regional cover targets stay parallel to the input and are
+    # distributed over the clusters directly (weight: recalculated bioh)
+    out <- mbind(out, toolParallelBiohCoverTotals(xInput, xTarget, biohCalculated, hp[1]))
+  } else {
+    # redistribute bioh from clusters without harvest area
+    out[, , "bioh"] <- toolRedistributeBioh(out[, , "bioh"], biohCalculated)
 
-  biohNormalization <- dimSums(out[, , "bioh"], 3) / dimSums(biohCalculated, 3)
-  biohNormalization[is.nan(biohNormalization)] <- 0
-  stopifnot(0 <= biohNormalization, biohNormalization < Inf)
+    biohNormalization <- dimSums(out[, , "bioh"], 3) / dimSums(biohCalculated, 3)
+    biohNormalization[is.nan(biohNormalization)] <- 0
+    stopifnot(0 <= biohNormalization, biohNormalization < Inf)
 
-  biohAdapted <- biohNormalization * biohCalculated
+    biohAdapted <- biohNormalization * biohCalculated
 
-  toolExpectLessDiff(dimSums(out[, , "bioh"], 3),
-                     dimSums(biohAdapted, 3),
-                     10^-4, "Adapting bioh to harmonized wood harvest area does not change total bioh")
+    toolExpectLessDiff(dimSums(out[, , "bioh"], 3),
+                       dimSums(biohAdapted, 3),
+                       10^-4, "Adapting bioh to harmonized wood harvest area does not change total bioh")
 
-  out[, , "bioh"] <- biohAdapted
+    out[, , "bioh"] <- biohAdapted
+  }
+
   out <- mbind(out, harvestArea)
   out <- out[, , getItems(kgCPerMhaTarget, 3), invert = TRUE]
 
