@@ -1,6 +1,6 @@
 test_that("toolParallelBiohCoverTotals moves stranded bioh over the global pool, failing the regional check", {
-  # regone.1 expects 2500 + (2100 - 3500) = 1100 forest bioh in 2025/2030 but
-  # its recalculated bioh is zero, so it hosts nothing and its expectation
+  # regone.1 targets 2500 + (2100 - 3500) = 1100 forest bioh in 2025/2030 but
+  # its recalculated bioh is zero, so it hosts nothing and its target
   # moves over the global pool to regtwo.1 with its recalculated 1000/1000
   cells <- c("regone.1", "regtwo.1")
   items <- c("bioh.primf", "bioh.secmf")
@@ -37,11 +37,11 @@ test_that("toolParallelBiohCoverTotals moves stranded bioh over the global pool,
   expect_equal(as.vector(result[, 2020, ]), as.vector(xTarget[, 2020, ]))
 })
 
-test_that("toolParallelBiohCoverTotals allocates the global cover expectation first when a regional one is negative", {
-  # regone's other land expectation 100 + (1 - 300) = -199 is floored to zero
-  # while regtwo grows to 400: scaling the positive expectation onto the raw
+test_that("toolParallelBiohCoverTotals allocates the global cover target first when a regional one is negative", {
+  # regone's other land target 100 + (1 - 300) = -199 is floored to zero
+  # while regtwo grows to 400: scaling the positive target onto the raw
   # global one 201 keeps the global cover total parallel, the forest cover with
-  # positive expectations everywhere is untouched by the balancing
+  # positive targets everywhere is untouched by the balancing
   cells <- c("regone.1", "regtwo.1")
   items <- c("bioh.primf", "bioh.secnf")
 
@@ -64,8 +64,8 @@ test_that("toolParallelBiohCoverTotals allocates the global cover expectation fi
   )
   expect_false(any(grepl("Check failed", conditions$conditions)))
 
-  # regone hosts nothing of the cover whose regional expectation turned
-  # negative, regtwo carries the whole raw global expectation 201 and 401
+  # regone hosts nothing of the cover whose regional target turned
+  # negative, regtwo carries the whole raw global target 201 and 401
   expect_equal(as.vector(result["regone.1", c(2025, 2030), "bioh.secnf"]), c(0, 0))
   expect_equal(as.vector(result["regtwo.1", 2025, "bioh.secnf"]), 201, tolerance = 10^-9)
   expect_equal(as.vector(result["regtwo.1", 2030, "bioh.secnf"]), 401, tolerance = 10^-9)
@@ -75,9 +75,9 @@ test_that("toolParallelBiohCoverTotals allocates the global cover expectation fi
   expect_equal(as.vector(result["regtwo.1", 2030, "bioh.primf"]), 1000, tolerance = 10^-9)
 })
 
-test_that("toolParallelBiohCoverTotals charges a negative global cover expectation to the other covers", {
-  # both regions' other land expectations are negative, so the global other
-  # land expectation -298 turns negative and is floored to zero, charged to the
+test_that("toolParallelBiohCoverTotals charges a negative global cover target to the other covers", {
+  # both regions' other land targets are negative, so the global other
+  # land target -298 turns negative and is floored to zero, charged to the
   # forest cover whose regions are uniformly scaled by 1702 / 2000
   cells <- c("regone.1", "regtwo.1")
   items <- c("bioh.primf", "bioh.secnf")

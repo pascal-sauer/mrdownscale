@@ -96,7 +96,7 @@ test_that("calcNonlandHarmonized works with harmonization = absoluteChanges", {
   expect_equal(as.vector(fertilizerGlobalTg[, 2025, ]), (50 + 40) + (1100 - 900))
   expect_equal(as.vector(fertilizerGlobalTg[, 2030, ]), (50 + 40) + (1000 - 900))
 
-  # the parallel expectation 4500 + (4300 - 5500) = 3300 of the merged region
+  # the parallel target 4500 + (4300 - 5500) = 3300 of the merged region
   # (dimSums reads the dots in reg.one/reg.two as cell separators, merging both
   # cells into one region) is allocated directly onto biohCalculated: the
   # clamped kg C per Mha rate of 0 for reg.one primf is floored to the smallest
@@ -383,7 +383,7 @@ test_that("absoluteChanges compensates lost fertilizer tonnage within the same r
 })
 
 test_that("absoluteChanges falls back to a global factor if a region lost all its cropland", {
-  # regone expects its 10 Tg anchor in 2025 but lost all its cropland, so no
+  # regone targets its 10 Tg anchor in 2025 but lost all its cropland, so no
   # cell of the region can hold it: the compensation falls back to one global
   # factor, regone's warn check fires, the per-region check fails by design
   # while the global parallelism check stays green
@@ -523,8 +523,8 @@ test_that("the global fallback is scoped to the offending crop group and year ta
 test_that("clusters with zero harvest area host no bioh for absoluteChanges", {
   # identical to the first test, except reg.one loses its harmonized harvest
   # area after 2020 while keeping positive bioh: under absoluteChanges the
-  # regional cover expectation is allocated onto biohCalculated, so the
-  # weightless reg.one clusters host nothing and the whole expectation of the
+  # regional cover target is allocated onto biohCalculated, so the
+  # weightless reg.one clusters host nothing and the whole target of the
   # merged region lands on reg.two, the only cluster with harvest area
   xInput <- new.magpie(c("reg.one", "reg.two"), years = c(2020, 2025, 2030), names = nonlandItems, fill = 0)
   xInput["reg.one", 2020, ] <- c(2000, 1500, 1, 1, 3, 1, 400)
@@ -583,7 +583,7 @@ test_that("clusters with zero harvest area host no bioh for absoluteChanges", {
   expect_equal(as.vector(x["reg.one", c(2025, 2030), paste0("bioh.", c("primf", "secmf"))]),
                rep(0, 4))
 
-  # reg.two hosts the whole parallel expectation of the merged region (dots
+  # reg.two hosts the whole parallel target of the merged region (dots
   # read as cell separators merge the cells into one region totalling
   # 4500 + (4300 - 5500) = 3300) on the only weight left, its own
   # recalculated 1200/1000 split, so 3300 * c(1200, 1000) / 2200
@@ -675,7 +675,7 @@ test_that("absoluteChanges keeps regional and global bioh totals parallel to gro
 
 test_that("absoluteChanges compensates clamped bioh within the region", {
   # regone.1's input bioh collapses far below the target, clamping its primf to
-  # zero: the region's parallel expectation 4000 - 2500 + 500 = 2000 is
+  # zero: the region's parallel target 4000 - 2500 + 500 = 2000 is
   # allocated onto the recalculated bioh (primf floored to the smallest positive
   # rate 500), so both cells share it proportional to their recalculated
   # 1000 and 2500, the other cell absorbing the difference
@@ -732,7 +732,7 @@ test_that("absoluteChanges compensates clamped bioh within the region", {
   expect_equal(as.vector(biohRegion["regtwo", , ]), 2000)
   expect_equal(as.numeric(dimSums(x[, 2025, "bioh"], c(1, 2, 3))), 2000 + 2000)
 
-  # both cells of regone share the expectation 2000 proportional to their
+  # both cells of regone share the target 2000 proportional to their
   # recalculated weights, regone.1 on its floored 500/500, regone.2 on 1500/1000
   expect_equal(as.vector(x["regone.1", 2025, c("bioh.primf", "bioh.secmf")]),
                2000 * c(500, 500) / 3500)
@@ -748,7 +748,7 @@ test_that("absoluteChanges allocates regional bioh proportional to recalculated 
   # within a region-cover the bioh of the clusters is exactly proportional to
   # biohCalculated (harmonized kg C per Mha times harmonized harvest area):
   # regone.1 recalculates to 2 x 7200, regone.2 to 2 x 1200 and regone.3 to
-  # zero, so of the region expectation 9200 regone.1 holds 6/7, regone.2 1/7
+  # zero, so of the region target 9200 regone.1 holds 6/7, regone.2 1/7
   # and the capacity-less regone.3 exactly nothing, the ratio of the hosting
   # clusters being their recalculated ratio 6:1
   cells <- c("regone.1", "regone.2", "regone.3")
@@ -806,7 +806,7 @@ test_that("absoluteChanges allocates regional bioh proportional to recalculated 
   expect_false(any(grepl("Check failed", conditions$conditions)))
   x <- result$x
 
-  # the region expectation 8000 + (9200 - 8000) = 9200 is allocated onto the
+  # the region target 8000 + (9200 - 8000) = 9200 is allocated onto the
   # recalculated 14400 : 2400 : 0, so regone.1 and regone.2 hold 6/7 and 1/7
   # of it, split onto their items by their recalculated item weights
   expect_equal(as.vector(x["regone.1", 2025, c("bioh.primf", "bioh.secmf")]),
@@ -824,7 +824,7 @@ test_that("absoluteChanges allocates regional bioh proportional to recalculated 
 
 test_that("absoluteChanges moves stranded bioh over the global pool, failing the regional check", {
   # regone.1 keeps positive input bioh but loses all its harvest area after 2020
-  # and has no receiver in its region: its parallel expectation of 2500 - 1400
+  # and has no receiver in its region: its parallel target of 2500 - 1400
   # = 1100 kg C yr-1 moves over the global pool to regtwo.1, so the regional
   # check fails by design for this pair while the global one stays green
   xInput <- new.magpie(c("regone.1", "regtwo.1"), years = c(2020, 2025, 2030), names = nonlandItems, fill = 0)
@@ -972,14 +972,14 @@ test_that("absoluteChanges keeps regional forest and other land cover totals of 
   expect_true(max(abs(x[, c(2010, 2020), coverItems] - xTarget[, c(2010, 2020), coverItems])) < 10^-5)
 })
 
-test_that("absoluteChanges allocates the global other land cover expectation first when a regional one is negative", {
+test_that("absoluteChanges allocates the global other land cover target first when a regional one is negative", {
   # regone's input other land bioh collapses from 300 to 1 while its target
   # anchor in the harmonization year is only 100, so its un-floored other land
-  # expectation turns negative while regtwo grows: flooring the regional
-  # expectations per region would drop regone's negative delta and lift the
-  # global other land total above the raw global expectation, so the global
+  # target turns negative while regtwo grows: flooring the regional
+  # targets per region would drop regone's negative delta and lift the
+  # global other land total above the raw global target, so the global
   # first allocation gives regone nothing and scales regtwo down to keep the
-  # global cover total exactly parallel to the un-floored expectation
+  # global cover total exactly parallel to the un-floored target
   cells <- c("regone.1", "regtwo.1")
   coverItems <- c("bioh.primf", "bioh.secmf", "bioh.secnf")
   items <- c(nonlandItems, "bioh.secnf", "wood_harvest_area.secnf")
@@ -1036,12 +1036,12 @@ test_that("absoluteChanges allocates the global other land cover expectation fir
   expect_false(any(grepl("Check failed", conditions$conditions)))
   x <- result$x
 
-  # the un-floored other land expectations are regone 100 - 299 = -199 in both
+  # the un-floored other land targets are regone 100 - 299 = -199 in both
   # future years and regtwo 400 in 2025 and 600 in 2030, giving the raw global
-  # expectations 201 and 401
+  # targets 201 and 401
   other <- dimSums(x[, c(2025, 2030), "bioh.secnf"], c(1.2, 3))
 
-  # the global other land total equals the un-floored raw global expectation
+  # the global other land total equals the un-floored raw global target
   expect_equal(as.vector(dimSums(other, 1)[, 2025, ]), 201, tolerance = 10^-9)
   expect_equal(as.vector(dimSums(other, 1)[, 2030, ]), 401, tolerance = 10^-9)
 
@@ -1049,11 +1049,11 @@ test_that("absoluteChanges allocates the global other land cover expectation fir
   expect_equal(as.vector(other["regone", 2025, ]), 0)
   expect_equal(as.vector(other["regone", 2030, ]), 0)
 
-  # the growing region carries the whole global expectation, scaled below its own
+  # the growing region carries the whole global target, scaled below its own
   expect_equal(as.vector(other["regtwo", 2025, ]), 201, tolerance = 10^-9)
   expect_equal(as.vector(other["regtwo", 2030, ]), 401, tolerance = 10^-9)
 
-  # the forest cover with its unharmed expectations stays exactly the same
+  # the forest cover with its unharmed targets stays exactly the same
   forest <- dimSums(x[, c(2025, 2030), c("bioh.primf", "bioh.secmf")], c(1.2, 3))
   expect_equal(as.vector(forest["regone", 2025, ]), 2000, tolerance = 10^-9)
   expect_equal(as.vector(forest["regtwo", 2030, ]), 2000, tolerance = 10^-9)
@@ -1065,10 +1065,10 @@ test_that("absoluteChanges allocates the global other land cover expectation fir
   expect_true(min(x) >= 0)
 })
 
-test_that("absoluteChanges charges a negative global other land cover expectation to the forest cover", {
+test_that("absoluteChanges charges a negative global other land cover target to the forest cover", {
   # both regions' input other land bioh collapses far below their target anchors
-  # so the global other land expectation turns negative while the flat global
-  # forest expectation outweighs the loss: the floored other land total must be
+  # so the global other land target turns negative while the flat global
+  # forest target outweighs the loss: the floored other land total must be
   # charged to the forest cover so the global total over all covers stays
   # parallel to the input and the positive forest regions are uniformly scaled
   # by the balancing factor 3702 / 4000
@@ -1128,8 +1128,8 @@ test_that("absoluteChanges charges a negative global other land cover expectatio
   expect_false(any(grepl("Check failed", conditions$conditions)))
   x <- result$x
 
-  # the un-floored other land expectations are regone 100 - 299 = -199 and
-  # regtwo 100 - 199 = -99, giving the global expectations -298 for other land
+  # the un-floored other land targets are regone 100 - 299 = -199 and
+  # regtwo 100 - 199 = -99, giving the global targets -298 for other land
   # and 4000 for forest in both future years
   other <- dimSums(x[, c(2025, 2030), "bioh.secnf"], c(1.2, 3))
   forest <- dimSums(x[, c(2025, 2030), c("bioh.primf", "bioh.secmf")], c(1.2, 3))
@@ -1139,11 +1139,11 @@ test_that("absoluteChanges charges a negative global other land cover expectatio
   expect_equal(as.vector(dimSums(other, 1)[, 2030, ]), 0)
 
   # the forest cover absorbs the charged loss: its global total is the summed
-  # un-floored global expectation 4000 - 298, not its own global expectation
+  # un-floored global target 4000 - 298, not its own global target
   expect_equal(as.vector(dimSums(forest, 1)[, 2025, ]), 3702, tolerance = 10^-6)
   expect_equal(as.vector(dimSums(forest, 1)[, 2030, ]), 3702, tolerance = 10^-6)
 
-  # the global total over both covers equals the un-floored expectation 3702
+  # the global total over both covers equals the un-floored target 3702
   expect_equal(as.vector(dimSums(forest + other, 1)[, 2025, ]), 3702, tolerance = 10^-6)
   expect_equal(as.vector(dimSums(forest + other, 1)[, 2030, ]), 3702, tolerance = 10^-6)
 
@@ -1158,9 +1158,9 @@ test_that("absoluteChanges charges a negative global other land cover expectatio
   expect_true(min(x) >= 0)
 })
 
-test_that("absoluteChanges cross-cover balancing is a no-op without a negative global cover expectation", {
-  # regone's other land expectation collapses below zero but regtwo's growth
-  # keeps the global other land expectation positive: the balancing factor is
+test_that("absoluteChanges cross-cover balancing is a no-op without a negative global cover target", {
+  # regone's other land target collapses below zero but regtwo's growth
+  # keeps the global other land target positive: the balancing factor is
   # exactly 1 and both cover global totals stay parallel as before
   cells <- c("regone.1", "regtwo.1")
   coverItems <- c("bioh.primf", "bioh.secmf", "bioh.secnf")
@@ -1216,12 +1216,12 @@ test_that("absoluteChanges cross-cover balancing is a no-op without a negative g
   expect_false(any(grepl("Check failed", conditions$conditions)))
   x <- result$x
 
-  # the un-floored other land expectations are regone -199 and regtwo 500, the
-  # global expectations 4000 for forest and 301 for other land, both positive
+  # the un-floored other land targets are regone -199 and regtwo 500, the
+  # global targets 4000 for forest and 301 for other land, both positive
   other <- dimSums(x[, c(2025, 2030), "bioh.secnf"], c(1.2, 3))
   forest <- dimSums(x[, c(2025, 2030), c("bioh.primf", "bioh.secmf")], c(1.2, 3))
 
-  # both cover global totals equal their own un-floored global expectations
+  # both cover global totals equal their own un-floored global targets
   expect_equal(as.vector(dimSums(forest, 1)[, 2025, ]), 4000, tolerance = 10^-6)
   expect_equal(as.vector(dimSums(forest, 1)[, 2030, ]), 4000, tolerance = 10^-6)
   expect_equal(as.vector(dimSums(other, 1)[, 2025, ]), 301, tolerance = 10^-6)
