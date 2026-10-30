@@ -40,6 +40,9 @@
 #' 4. The sum over both covers breaks where land-derived primary
 #'    harvest alone outweighs a cover's balanced target, harvest exceeds
 #'    anchor plus delta.
+#' 5. Stranded cover targets of regions without any harvestable land for that
+#'    cover fill the remaining room of all clusters (toolAllocateRegionTotals);
+#'    what does not fit there is reported as excess directly, not shiftable.
 #'
 #' Always true: the allocated secondary and plantation harvest stays
 #' within the harvestable land of every cluster.
@@ -76,6 +79,7 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
   coverItems <- list()
   coverTotal <- list()
   coverCap <- list()
+  coverLoss <- list()
 
   for (cover in names(covers)) {
     prim <- covers[[cover]]$prim
@@ -121,7 +125,15 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
     clusterCap <- dimSums(maxHarvItems, 3)
     itemShare <- maxHarvItems / clusterCap
     itemShare[is.na(itemShare)] <- 0
-    allocatedSecd <- toolAllocateRegionTotals(requiredSecd, clusterCap, msgHold) * itemShare
+    clusterLevelAlloc <- toolAllocateRegionTotals(requiredSecd, clusterCap, msgHold)
+    # stranded target that no remaining cluster room could host anywhere is
+    # pure loss, reported as excess proportional to the cluster caps
+    # (uniformly where no cluster has any cap)
+    unplaced <- pmax(dimSums(requiredSecd, 1) - dimSums(clusterLevelAlloc, 1), 0)
+    lossShare <- clusterCap / dimSums(clusterCap, 1)
+    lossShare[is.na(lossShare)] <- 1 / length(getCells(clusterCap))
+    coverLoss[[cover]] <- lossShare * unplaced
+    allocatedSecd <- clusterLevelAlloc * itemShare
     coverTotal[[cover]] <- dimSums(allocatedSecd, 3)
     coverCap[[cover]] <- clusterCap
     coverItems[[cover]] <- pmin(allocatedSecd, maxHarvItems)
@@ -152,7 +164,8 @@ toolParallelHarvestCoverTotals <- function(xInput, xTarget, primHarv, landHarmon
 
   secdHarv <- mbind(coverItems$forest, coverItems$other)
   excessSecdHarvest <- pmax(coverTotal$forest - coverCap$forest, 0) +
-    pmax(coverTotal$other - coverCap$other, 0)
+    pmax(coverTotal$other - coverCap$other, 0) +
+    coverLoss$forest + coverLoss$other
 
   return(list(secdHarv = secdHarv,
               excessSecdHarvest = excessSecdHarvest,

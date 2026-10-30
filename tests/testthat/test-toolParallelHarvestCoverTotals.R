@@ -99,3 +99,65 @@ test_that("toolParallelHarvestCoverTotals reports the excess that not even the o
   expect_equal(as.vector(result$coverTarget$forest["regone", 2025, ]), 23)
   expect_equal(as.vector(result$coverGlobalBalanced[, 2025, ]), 23 + 1)
 })
+
+test_that("toolParallelHarvestCoverTotals places a stranded target into another region's room", {
+  # regtwo targets 3 forest harvest but has no forest land at all, while
+  # regone's own target 4 leaves 6 room on its cluster: the whole stranded 3
+  # fits into that room, so nothing is lost and no excess is reported
+  years <- c(2010, 2020, 2025, 2030)
+  land <- makeLand(years, list(
+    regone.1 = list(primf = 20, primn = 0, secdf = 10, secdn = 0, pltns = 0),
+    regtwo.1 = list(primf = 20, primn = 0, secdf = 0, secdn = 0, pltns = 0)
+  ))
+
+  xTarget <- makeHarvest(c(2010, 2020), list(
+    regone.1 = list(primf = 0, primn = 0, secyf = 4, secmf = 0, pltns = 0, secnf = 0),
+    regtwo.1 = list(primf = 0, primn = 0, secyf = 3, secmf = 0, pltns = 0, secnf = 0)
+  ))
+  xInput <- makeHarvest(c(2020, 2025, 2030),
+                        list(regone.1 = list(secyf = 4, pltns = 0, secnf = 0),
+                             regtwo.1 = list(secyf = 3, pltns = 0, secnf = 0)))
+  primHarv <- new.magpie(c("regone.1", "regtwo.1"), years = c(2025, 2030),
+                         names = c("primf", "primn"), fill = 0)
+
+  conditions <- captureConditions(
+    result <- toolParallelHarvestCoverTotals(xInput, xTarget, primHarv, land, 2020)
+  )
+  expect_true(any(grepl("Check failed.*harvestable land left to hold it", conditions$conditions)))
+
+  # all 7 of the global forest target land on regone.1 within its 10 cap
+  expect_equal(as.vector(result$secdHarv["regone.1", 2025, "secdf"]), 7, tolerance = 10^-8)
+  expect_equal(as.vector(result$secdHarv["regtwo.1", 2025, "secdf"]), 0)
+  expect_equal(max(result$excessSecdHarvest), 0)
+})
+
+test_that("toolParallelHarvestCoverTotals reports the stranded target that no room can host", {
+  # both regions target forest harvest but there is no forest land at all: the
+  # whole stranded forest target finds no room anywhere and must be reported
+  # as excess spread over the clusters instead of vanishing silently
+  years <- c(2010, 2020, 2025, 2030)
+  land <- makeLand(years, list(
+    regone.1 = list(primf = 20, primn = 0, secdf = 0, secdn = 0, pltns = 0),
+    regtwo.1 = list(primf = 20, primn = 0, secdf = 0, secdn = 0, pltns = 0)
+  ))
+
+  xTarget <- makeHarvest(c(2010, 2020), list(
+    regone.1 = list(primf = 0, primn = 0, secyf = 4, secmf = 0, pltns = 0, secnf = 0),
+    regtwo.1 = list(primf = 0, primn = 0, secyf = 3, secmf = 0, pltns = 0, secnf = 0)
+  ))
+  xInput <- makeHarvest(c(2020, 2025, 2030),
+                        list(regone.1 = list(secyf = 4, pltns = 0, secnf = 0),
+                             regtwo.1 = list(secyf = 3, pltns = 0, secnf = 0)))
+  primHarv <- new.magpie(c("regone.1", "regtwo.1"), years = c(2025, 2030),
+                         names = c("primf", "primn"), fill = 0)
+
+  conditions <- captureConditions(
+    result <- toolParallelHarvestCoverTotals(xInput, xTarget, primHarv, land, 2020)
+  )
+  expect_true(any(grepl("Check failed.*harvestable land left to hold it", conditions$conditions)))
+
+  # nothing can be allocated, the full target of 7 is reported as excess
+  expect_equal(as.vector(result$secdHarv["regone.1", 2025, "secdf"]), 0)
+  expect_equal(as.numeric(dimSums(result$excessSecdHarvest, 1)[, 2025, ]), 7)
+  expect_equal(as.numeric(dimSums(result$excessSecdHarvest, 1)[, 2030, ]), 7)
+})
