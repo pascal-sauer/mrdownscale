@@ -19,12 +19,12 @@ fertilizer rates in kg ha-1 yr-1, capped at the threshold
 \description{
 Enforce a plausibility threshold on fertilizer rates by redistributing the
 tonnage of every cell above it onto the remaining headroom of the cells of
-the same region, crop group and year, or of the global pool if a region
-cannot absorb its own excess. Receivers only receive a share proportional to
-their own headroom, so a single pass suffices and no one overshoots. If not
-even the global pool has enough headroom, the input is returned unchanged so
-that the tonnage totals stay intact and toolCheckFertilizer reports the
-exceedance.
+the same region, crop group and year, or of the global pool for those crop
+group and year tables in which a region cannot absorb its own excess.
+Receivers only receive a share proportional to their own headroom, so a
+single pass suffices and no one overshoots. Tables in which not even the
+global pool has enough headroom are left unchanged, so that the tonnage
+totals stay intact and toolCheckFertilizer reports the exceedance.
 }
 \author{
 Pascal Sauer

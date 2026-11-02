@@ -57,7 +57,7 @@ A BibTeX entry for LaTeX users is
   title = {mrdownscale: Downscale and harmonize land use data},
   author = {Pascal Sauer and Jan Philipp Dietrich},
   doi = {10.5281/zenodo.11244475},
-  date = {2026-10-22},
+  date = {2026-11-02},
   year = {2026},
   url = {https://github.com/pik-piam/mrdownscale},
   note = {Version: 0.53.0},
