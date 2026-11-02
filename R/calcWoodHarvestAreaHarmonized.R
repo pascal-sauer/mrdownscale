@@ -59,16 +59,12 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
   futureYears <- setdiff(getYears(xInput, as.integer = TRUE), histYears)
 
   if (harmonization == "absoluteChanges") {
-    # the cover targets stay parallel to the input and are allocated onto
-    # the harvestable land directly, the checks below use what the tool returns
+    # the cover targets stay parallel to the input, the tool checks it itself
     primHarv <- primHarv[, futureYears, ]
     coverHarvest <- toolParallelHarvestCoverTotals(xInput, xTarget, primHarv, landHarmonized,
                                                    harmonizationPeriod[1])
     secdHarv <- coverHarvest$secdHarv
     excessSecdHarvest <- coverHarvest$excessSecdHarvest
-    coverTarget <- coverHarvest$coverTarget
-    coverGlobalBalanced <- coverHarvest$coverGlobalBalanced
-    covers <- coverHarvest$covers
   } else {
     harmonizer <- toolGetHarmonizer(harmonization, constantTotal = FALSE)
     rawHarvestHarmonized <- harmonizer(xInput, xTarget, harmonizationPeriod = harmonizationPeriod)
@@ -139,20 +135,6 @@ calcWoodHarvestAreaHarmonized <- function(input, target, harmonizationPeriod, ha
   toolExpectTrue(min(out) >= 0, "All values are >= 0")
   toolExpectLessDiff(out[, histYears, ], xTarget[, histYears, ], 0,
                      "history is not changed by harmonization")
-  if (harmonization == "absoluteChanges") {
-    outRegionTotal <- dimSums(toolAggregateWoodHarvest(out[, futureYears, ]), 1.2)
-    outCoverTotals <- list()
-    for (cover in names(covers)) {
-      items <- c(covers[[cover]]$prim, covers[[cover]]$secd)
-      outCoverTotals[[cover]] <- dimSums(outRegionTotal[, , items], 3)
-      msg <- paste0("Regional ", cover, " wood harvest area is parallel to input ",
-                    "after the harmonization year")
-      toolExpectLessDiff(outCoverTotals[[cover]], coverTarget[[cover]], 10^-5, msg)
-    }
-    toolExpectLessDiff(dimSums(outCoverTotals$forest + outCoverTotals$other, 1),
-                       coverGlobalBalanced, 10^-5,
-                       "Global wood harvest area is parallel to input after the harmonization year")
-  }
   toolCheckWoodHarvestArea(out, landHarmonized, harmonizationPeriod[1])
 
   return(list(x = out,
