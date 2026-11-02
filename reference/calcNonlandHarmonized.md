@@ -61,10 +61,10 @@ are then rescaled per region, crop category and year so that each
 region's fertilizer total from the harmonization year on keeps a
 constant offset to input data (parallel year-to-year changes),
 redistributing amounts lost where zero clamping or missing cropland
-removed fertilizer to the other cells of the same region, falling back
-to the global factor exactly for those crop group and year combinations
-where a region lost all its cropland and can no longer hold any
-fertilizer, and finally capped at the plausibility threshold
+removed fertilizer to the other clusters of the same region, falling
+back to the global factor exactly for those crop group and year
+combinations where a region lost all its cropland and can no longer hold
+any fertilizer, and finally capped at the plausibility threshold
 (toolCapFertilizerKgPerHa).
 
 ## Author
