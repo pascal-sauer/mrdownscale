@@ -2,24 +2,6 @@ items <- c("primf", "primn", "secdf", "secdn", "urban", "pltns",
            "pastr", "range", "c3ann_rainfed", "c3ann_irrigated",
            "c4ann_rainfed", "c4ann_irrigated")
 
-# runs the expression and returns its value together with all messages and
-# warnings emitted by toolStatusMessage (which uses warnings for "warn" status)
-captureConditions <- function(expr) {
-  conditions <- character()
-  value <- withCallingHandlers(
-    expr,
-    message = function(m) {
-      conditions <<- unique(c(conditions, conditionMessage(m)))
-      invokeRestart("muffleMessage")
-    },
-    warning = function(w) {
-      conditions <<- unique(c(conditions, conditionMessage(w)))
-      invokeRestart("muffleWarning")
-    }
-  )
-  return(list(value = value, conditions = conditions))
-}
-
 expectCondition <- function(conditions, regexp) {
   expect_true(any(grepl(regexp, conditions)))
 }
@@ -39,7 +21,8 @@ test_that("toolHarmonizeAbsoluteChanges works", {
   xInput["reg.two", 2025, ] <- c(32, 8, 11, 7, 5, 0, 37, 0, 0, 0, 0, 0)
   xInput["reg.two", 2030, ] <- c(33, 8, 12, 7, 5, 0, 35, 0, 0, 0, 0, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # no negative absolute changes, so no value is reset to zero and no trend is altered
@@ -64,10 +47,12 @@ test_that("toolHarmonizeAbsoluteChanges works", {
   expect_equal(as.vector(dimSums(out, dim = 3)), rep(100, 8))
 
   # invalid harmonizationPeriod
-  expect_error(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2015, 2015)),
+  expect_error(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2015, 2015),
+                                            constantTotal = TRUE),
                "hy %in% inputYears is not TRUE")
-  expect_error(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2010, 2020)))
-  expect_error(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020))
+  expect_error(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2010, 2020),
+                                            constantTotal = TRUE))
+  expect_error(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = 2020, constantTotal = TRUE))
 })
 
 test_that("toolHarmonizeAbsoluteChanges avoids negative values", {
@@ -81,7 +66,8 @@ test_that("toolHarmonizeAbsoluteChanges avoids negative values", {
   # input loses 10 Mha primf, but target only has 5 Mha primf in 2020
   xInput["reg.three", 2025, ] <- c(40, 5, 10, 5, 5, 0, 35, 0, 0, 0, 0, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   expectCondition(run$conditions, "\\[!\\]")
@@ -105,7 +91,8 @@ test_that("toolHarmonizeAbsoluteChanges compensates negative forest area within 
   # input loses 15 Mha secdf, target only has 10 Mha secdf in 2020
   xInput["reg.four", 2025, ] <- c(20, 10, 5, 5, 10, 0, 50, 0, 0, 0, 0, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # the secdf shortfall of 5 Mha is compensated by scaling down the
@@ -132,7 +119,8 @@ test_that("toolHarmonizeAbsoluteChanges scales all categories except urban", {
   # the forest group after clipping
   xInput["reg.five", 2025, ] <- c(20, 4, 0, 1, 5, 0, 70, 0, 0, 0, 0, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # the forest group is scaled down so that it keeps its total area of 35 Mha:
@@ -159,7 +147,8 @@ test_that("toolHarmonizeAbsoluteChanges protects primary land from compensation 
   xInput["reg.prim", 2025, ] <- c(20, 10, 10, 10, 0, 5, 45, 0, 0, 0, 0, 0)
   xInput["reg.prim", 2030, ] <- c(20, 10, 10, 10, 0, 5, 20, 0, 25, 0, 0, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # the 25 Mha excess is absorbed by secdf, secdn, pltns and pastr (factor 12/17),
@@ -190,7 +179,8 @@ test_that("toolHarmonizeAbsoluteChanges caps prim recovery after a compensation 
   # but above the cut values of 2025, which is an expansion for toolReplaceExpansion
   xInput["reg.recover", 2030, ] <- c(26, 10, 20, 5, 5, 0, 34, 0, 0, 0, 0, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # the compensation cut in 2025: primf 38 * 40/48, primn 10 * 40/48
@@ -222,7 +212,8 @@ test_that("toolHarmonizeAbsoluteChanges scales down excess area and replaces pri
   # categories are clipped to 0
   xInput["reg.seven", 2025, ] <- c(90, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # after clipping and scaling, toolReplaceExpansion moves the prim expansions
@@ -246,7 +237,7 @@ test_that("toolHarmonizeAbsoluteChanges refuses to scale urban", {
 
   expect_error(
     suppressWarnings(suppressMessages(
-      toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020))
+      toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020), constantTotal = TRUE)
     )),
     "all(nonUrbanTarget >= -10^-5) is not TRUE", fixed = TRUE
   )
@@ -264,7 +255,8 @@ test_that("toolHarmonizeAbsoluteChanges sets a group with a negative total area 
   # the forest group becomes negative and the whole group is set to zero
   xInput["reg.nine", 2025, ] <- c(0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   expect_equal(as.vector(out["reg.nine", 2025, c("primf", "urban", "pastr")]), c(0, 0, 100))
@@ -283,7 +275,8 @@ test_that("toolHarmonizeAbsoluteChanges compensates negative cropland within the
   # input loses 40 Mha of c3ann_rainfed, more than the 30 Mha in the target
   xInput["reg.crop", 2025, ] <- c(5, 0, 0, 0, 5, 0, 22, 1, 10, 0, 57, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # the c3ann_rainfed shortfall is covered by c4ann_rainfed, the cropland group
@@ -306,21 +299,121 @@ test_that("toolHarmonizeAbsoluteChanges rejects inconsistent or invalid input da
   # total area of input is not constant over time
   brokenInput <- xInput
   brokenInput["reg.six", 2025, "pastr"] <- 30
-  expect_error(toolHarmonizeAbsoluteChanges(brokenInput, xTarget, c(2020, 2020)))
+  expect_error(toolHarmonizeAbsoluteChanges(brokenInput, xTarget, c(2020, 2020), constantTotal = TRUE))
 
   # total area of target is not constant over time
   brokenTarget <- xTarget
   brokenTarget["reg.six", 2010, "pastr"] <- 25
-  expect_error(toolHarmonizeAbsoluteChanges(xInput, brokenTarget, c(2020, 2020)))
+  expect_error(toolHarmonizeAbsoluteChanges(xInput, brokenTarget, c(2020, 2020), constantTotal = TRUE))
 
   # input data contains NA values
   naInput <- xInput
   naInput["reg.six", 2025, "urban"] <- NA_real_
-  expect_error(toolHarmonizeAbsoluteChanges(naInput, xTarget, c(2020, 2020)))
+  expect_error(toolHarmonizeAbsoluteChanges(naInput, xTarget, c(2020, 2020), constantTotal = TRUE))
+})
+
+test_that("toolHarmonizeAbsoluteChanges works with nonland data", {
+  nonlandItems <- c("bioh.indu", "bioh.animal")
+  # nonland data is not constant-sum over time, this must not be rejected
+  xTarget <- new.magpie(c("reg.one", "reg.two"), years = c(2010, 2020), names = nonlandItems, fill = 0)
+  xTarget["reg.one", 2010, ] <- c(1, 5)
+  xTarget["reg.one", 2020, ] <- c(10, 2)
+  xTarget["reg.two", 2010, ] <- c(3, 4)
+  xTarget["reg.two", 2020, ] <- c(8, 7)
+
+  xInput <- new.magpie(c("reg.one", "reg.two"), years = c(2020, 2025, 2030), names = nonlandItems, fill = 0)
+  xInput["reg.one", 2020, ] <- c(20, 6)
+  # reg.one bioh.animal raw value is 2 + (3 - 6) = -1, so the clamp at zero is exercised
+  xInput["reg.one", 2025, ] <- c(25, 3)
+  xInput["reg.one", 2030, ] <- c(30, 0)
+  xInput["reg.two", 2020, ] <- c(4, 10)
+  xInput["reg.two", 2025, ] <- c(6, 12)
+  xInput["reg.two", 2030, ] <- c(5, 8)
+
+  run <- captureConditions(
+    toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020), constantTotal = FALSE)
+  )
+  out <- run$value
+  expect_equal(getYears(out, as.integer = TRUE), c(2010, 2020, 2025, 2030))
+
+  # until the harmonization year the target is used unchanged
+  expect_equal(as.vector(out["reg.one", 2010, ]), c(1, 5))
+  expect_equal(as.vector(out["reg.one", 2020, ]), c(10, 2))
+  expect_equal(as.vector(out["reg.two", 2020, ]), c(8, 7))
+
+  # afterwards the raw absolute changes of the input are applied, clamped at zero
+  expect_equal(as.vector(out["reg.one", 2025, ]), c(15, 0))
+  expect_equal(as.vector(out["reg.one", 2030, ]), c(20, 0))
+  expect_equal(as.vector(out["reg.two", 2025, ]), c(10, 9))
+  expect_equal(as.vector(out["reg.two", 2030, ]), c(9, 5))
+
+  expect_true(all(out >= 0))
+
+  # the clamping added +1 and +4 to bioh.animal, reported per category prefix group,
+  # as mean 2.5 per timestep over the accumulated bioh.animal output of 14
+  biohGroup <- gsub("[[:space:]]", "", grep("group \"bioh\"", run$conditions, value = TRUE))
+  expect_length(biohGroup, 1)
+  expect_match(biohGroup, "bioh\\.animal,35\\.7,35\\.7,0,2\\.5,2\\.5,0")
+  expect_match(biohGroup, "total,7\\.35,7\\.35,0,2\\.5,2\\.5,0")
+})
+
+test_that("toolHarmonizeAbsoluteChanges does not report for nonland data without clamping", {
+  nonlandItems <- c("bioh.indu", "bioh.animal")
+  xTarget <- new.magpie("reg.one", years = c(2010, 2020), names = nonlandItems, fill = 0)
+  xTarget["reg.one", 2020, ] <- c(10, 2)
+
+  xInput <- new.magpie("reg.one", years = c(2020, 2025), names = nonlandItems, fill = 0)
+  xInput["reg.one", 2020, ] <- c(20, 6)
+  # all raw values stay positive, so nothing is clamped
+  xInput["reg.one", 2025, ] <- c(25, 7)
+
+  run <- captureConditions(
+    toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020), constantTotal = FALSE)
+  )
+  expect_equal(as.vector(run$value["reg.one", 2025, ]), c(15, 3))
+  expect_length(grep("group", run$conditions), 0)
+})
+
+test_that("toolHarmonizeAbsoluteChanges rejects constant total area data with unknown categories", {
+  unknownItems <- c("cropland", "grassland", "forest", "built")
+  xTarget <- new.magpie("reg.unknown", years = c(2010, 2020), names = unknownItems, fill = 0)
+  for (year in c(2010, 2020)) {
+    xTarget["reg.unknown", year, ] <- c(30, 30, 30, 10)
+  }
+
+  xInput <- new.magpie("reg.unknown", years = c(2020, 2025), names = unknownItems, fill = 0)
+  xInput["reg.unknown", 2020, ] <- c(30, 20, 40, 10)
+  # forest loses 35 Mha, more than the 30 Mha in the target, so its raw value is negative
+  xInput["reg.unknown", 2025, ] <- c(35, 25, 5, 35)
+
+  # constant total area data must not fall back to the clamping handling just because
+  # none of its categories is recognized, it has to fail the taxonomy check instead
+  expect_error(
+    suppressWarnings(suppressMessages(
+      toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020), constantTotal = TRUE)
+    )),
+    "setequal(c(unlist(groups), \"urban\"), getItems(changed, 3)) is not TRUE", fixed = TRUE
+  )
+
+  # the very same data without a constant total area is accepted and clamped at zero
+  out <- suppressWarnings(suppressMessages(
+    toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020), constantTotal = FALSE)
+  ))
+  expect_equal(as.vector(out["reg.unknown", 2025, ]), c(35, 35, 0, 35))
+})
+
+test_that("toolHarmonizeAbsoluteChanges demands an explicit constantTotal", {
+  xTarget <- new.magpie("reg.flag", years = c(2010, 2020), names = items, fill = 0)
+  xTarget["reg.flag", , "primf"] <- 100
+  xInput <- new.magpie("reg.flag", years = c(2020, 2025), names = items, fill = 0)
+  xInput["reg.flag", , "primf"] <- 100
+
+  expect_error(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)),
+               "argument \"constantTotal\" is missing")
 })
 
 test_that("toolGetHarmonizer returns the absoluteChanges harmonizer", {
-  harmonizer <- toolGetHarmonizer("absoluteChanges")
+  harmonizer <- toolGetHarmonizer("absoluteChanges", constantTotal = TRUE)
   expect_true(is.function(harmonizer))
   expect_error(toolGetHarmonizer("nonexistent"))
 })
@@ -337,7 +430,8 @@ test_that("toolHarmonizeAbsoluteChanges compensates negative crop by its rainfed
   # the gain goes to c4ann_irrigated
   xInput["reg.comp", 2025, ] <- c(0, 0, 0, 0, 0, 0, 10, 0, 30, 10, 7, 43)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # raw c3ann_rainfed drops to -10 Mha, the deficit is absorbed by
@@ -361,7 +455,8 @@ test_that("toolHarmonizeAbsoluteChanges scales other crops if counterpart cannot
   # enough to compensate the 20 Mha raw deficit
   xInput["reg.comp2", 2025, ] <- c(0, 0, 0, 0, 0, 0, 65, 0, 5, 5, 20, 5)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # both c3ann categories are zeroed, the remaining excess is covered by
@@ -385,7 +480,8 @@ test_that("toolHarmonizeAbsoluteChanges zeroes crop pair if both are negative", 
   # values become negative, the other crops cover the total deficit of 40 Mha
   xInput["reg.comp3", 2025, ] <- c(0, 0, 0, 0, 0, 0, 20, 0, 5, 0, 45, 30)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   expect_equal(as.vector(out["reg.comp3", 2025, c("pastr", "c3ann_rainfed", "c3ann_irrigated",
@@ -411,7 +507,8 @@ test_that("toolHarmonizeAbsoluteChanges compensates negative biofuel crop by its
   # 40 Mha, more than its 20 Mha irrigated twin can cover, c4ann absorbs the rest
   xInput["reg.bio", 2025, ] <- c(0, 0, 0, 0, 0, 0, 10, 0, 30, 10, 7, 43)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # the biofuel pair self-compensates exactly like a base-crop pair: c3ann rainfed is
@@ -440,7 +537,8 @@ test_that("toolHarmonizeAbsoluteChanges pairs base and biofuel crops of a type s
   # irrigated twin without leaking into the other class
   xInput["reg.col", 2025, ] <- c(0, 0, 0, 0, 0, 0, 65, 0, 10, 10, 10, 5)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # base pair total 3 Mha, biofuel pair total 1 Mha, each reduced onto its
@@ -465,7 +563,8 @@ test_that("toolHarmonizeAbsoluteChanges harmonizes rainfed/irrigated orphans gra
   xInput["reg.orphan", 2020, ] <- c(20, 10, 20, 5, 10, 0, 35, 0, 0)
   xInput["reg.orphan", 2025, ] <- c(20, 10, 22, 5, 10, 0, 33, 0, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # the orphaned c3ann_rainfed does not abort harmonization, and since no raw
@@ -489,7 +588,8 @@ test_that("toolHarmonizeAbsoluteChanges compensates a negative orphan within its
   # target, so its raw value becomes -5 Mha
   xInput["reg.orphan2", 2025, ] <- c(20, 10, 20, 5, 10, 0, 35, 0, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # the -5 Mha orphan is zeroed within the cropland group and the excess area is
@@ -514,7 +614,8 @@ test_that("toolHarmonizeAbsoluteChanges compensates pairs before passing orphans
   # an orphan goes 10 Mha below its target (raw -7)
   xInput["reg.orphan3", 2025, ] <- c(0, 0, 0, 0, 0, 0, 60, 0, 30, 10, 0)
 
-  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020)))
+  run <- captureConditions(toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020),
+                                                        constantTotal = TRUE))
   out <- run$value
 
   # the complete c3ann pair compensates internally first (total 10 Mha on the
@@ -543,7 +644,7 @@ test_that("toolHarmonizeAbsoluteChanges rejects cropland names without underscor
   # so it belongs to no category group and must be rejected
   expect_error(
     suppressWarnings(suppressMessages(
-      toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020))
+      toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod = c(2020, 2020), constantTotal = TRUE)
     )),
     "setequal(c(unlist(groups), \"urban\"), getItems(changed, 3)) is not TRUE", fixed = TRUE
   )

@@ -1,11 +1,12 @@
-#' toolReportAreaDeviation
+#' toolReportDeviation
 #'
 #' Reports, per category group and per variable, how much the corrected output
 #' deviates from the raw input data: the positive and the negative deviations
 #' (xOut - xRaw) accumulated separately over all cells and timesteps, as mean
-#' per timestep in Mha and as a percentage of the output area accumulated over
-#' the same timesteps, plus the net change as the sum of both columns, in six
-#' columns: =%, +%, -%, =Mha, +Mha, -Mha.
+#' per timestep and as a percentage of the output accumulated over the same
+#' timesteps, plus the net change as the sum of both columns, in six columns:
+#' =%, +%, -%, =unit, +unit, -unit. Groups whose deviations all stay below the
+#' tolerance are not reported.
 #'
 #' @param xRaw harmonized data before corrections, as magpie object, with the
 #'   years of xOut after the harmonization year
@@ -14,9 +15,10 @@
 #' @param groups Named list of character vectors with the category groups to be
 #'   reported separately, named as they should appear in the report; every
 #'   category must be in one of the groups or be "urban"
+#' @param unit Unit of the values, appended to the mean value column headers
 #'
 #' @author Pascal Sauer
-toolReportAreaDeviation <- function(xRaw, xOut, groups) {
+toolReportDeviation <- function(xRaw, xOut, groups, unit = "") {
   stopifnot(identical(getItems(xRaw, 3), getItems(xOut, 3)))
   yearsAfter <- getYears(xRaw, as.integer = TRUE)
   deviation <- xOut[, yearsAfter, ] - xRaw
@@ -33,7 +35,7 @@ toolReportAreaDeviation <- function(xRaw, xOut, groups) {
 
   .formatNumber <- function(x) as.character(signif(x, 3))
   .meanPerTimestep <- function(x) x / length(yearsAfter)
-  # share of the accumulated output area, as percent
+  # share of the accumulated output, as percent
   .formatPct <- function(part, total) {
     pct <- signif(100 * part / total, 3)
     return(ifelse(is.na(pct), "n/a", as.character(pct)))
@@ -63,6 +65,9 @@ toolReportAreaDeviation <- function(xRaw, xOut, groups) {
     groupNegative <- negative[groupItems]
     groupNet <- net[groupItems]
     groupOutputArea <- outputArea[groupItems]
+    if (all(groupPositive == 0) && all(groupNegative == 0) && all(groupNet == 0)) {
+      next
+    }
     # sort by the gross deviation, so the variables that deviate most surface
     # first, ties in group order
     orderIndex <- order(groupPositive - groupNegative, decreasing = TRUE)
@@ -75,7 +80,7 @@ toolReportAreaDeviation <- function(xRaw, xOut, groups) {
     groupTotalNet <- groupTotalPositive + groupTotalNegative
     groupTotalOutputArea <- sum(groupOutputArea)
     tableRows <- rbind(
-      c("variable", "=%", "+%", "-%", "=Mha", "+Mha", "-Mha"),
+      c("variable", "=%", "+%", "-%", paste0("=", unit), paste0("+", unit), paste0("-", unit)),
       c("total", .formatPct(groupTotalNet, groupTotalOutputArea),
         .formatPct(groupTotalPositive, groupTotalOutputArea),
         .formatPct(groupTotalNegative, groupTotalOutputArea),
@@ -101,7 +106,8 @@ toolReportAreaDeviation <- function(xRaw, xOut, groups) {
     toolStatusMessage("note",
                       paste0("Deviation output vs. history plus raw input trend in group \"", groupName,
                              "\" (deviations accumulated over cells and timesteps, as mean per timestep",
-                             " in Mha and as % of the output area of the same period):\n",
+                             if (unit == "") "" else paste0(" in ", unit),
+                             " and as % of the output of the same period):\n",
                              paste(tableText, collapse = "\n")))
   }
   return(invisible(NULL))

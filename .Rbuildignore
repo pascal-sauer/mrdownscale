@@ -17,6 +17,8 @@
 ^vignettes/.lintr$
 ^LICENSE\.md$
 ^\.claude$
+^\.worktrees$
+^plot-.*\.png$
 ^_pkgdown\.yml$
 ^CODE_STYLE\.md$
 ^AGENTS\.md$
