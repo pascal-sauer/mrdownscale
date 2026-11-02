@@ -21,13 +21,32 @@ toolCapFertilizerKgPerHa <- function(fertilizerKgPerHa, landMha, threshold = 120
   fertilizerTg <- toolFertilizerTg(fertilizerKgPerHa, landMha)
   # convert the threshold from kg ha-1 yr-1 to Tg yr-1 per cluster
   capTg <- threshold * cropMha * 10^-3
-  cappedTg <- toolRedistributeOverCap(fertilizerTg, capTg,
-                                      warnMessage = "Regions compensate for their own fertilizer above the threshold")
-  cappedKgPerHa <- toolFertilizerKgPerHa(cappedTg, landMha)
+  excessTg <- pmax(fertilizerTg - capTg, 0)
+  spareTg <- pmax(capTg - fertilizerTg, 0)
+
+  # infeasible variables stay unchanged, capping would lose tonnes, toolCheckFertilizer reports them
+  globalExcessTg <- dimSums(excessTg, 1)
+  globalSpareTg <- dimSums(spareTg, 1)
+  feasible <- globalExcessTg <= globalSpareTg
+  excessTg <- excessTg * feasible
+  spareTg <- spareTg * feasible
+  globalExcessTg <- globalExcessTg * feasible
+
+  # per crop group and year, the global pool only where a region cannot compensate for its own excess
+  regionExcessTg <- dimSums(excessTg, 1.2)
+  regionSpareTg <- dimSums(spareTg, 1.2)
+  useGlobal <- dimSums(regionExcessTg > regionSpareTg, 1) > 0
+  toolExpectTrue(!any(useGlobal), "Regions compensate for their own fertilizer above the threshold",
+                 falseStatus = "warn")
+  # where spare is zero, excess is zero too or the other pool applies, so 1 only avoids NaN
+  regionSpareTg[regionSpareTg == 0] <- 1
+  globalSpareTg[globalSpareTg == 0] <- 1
+  factor <- regionExcessTg / regionSpareTg * (1 - useGlobal) + globalExcessTg / globalSpareTg * useGlobal
+
+  cappedKgPerHa <- toolFertilizerKgPerHa(fertilizerTg - excessTg + factor * spareTg, landMha)
   # rounding in the tonnage round trip can push values that landed exactly on
   # the cap slightly above it, the lost tonnes are far below all check
   # tolerances, infeasible variables stay unchanged for toolCheckFertilizer to report
-  feasible <- dimSums(pmax(fertilizerTg - capTg, 0), 1) <= dimSums(pmax(capTg - fertilizerTg, 0), 1)
   roundedOver <- (cappedKgPerHa > threshold) * feasible
   cappedKgPerHa[roundedOver == 1] <- threshold
   return(cappedKgPerHa)
