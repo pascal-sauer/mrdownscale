@@ -58,6 +58,10 @@
 - [`toolAddMetadataNC()`](toolAddMetadataNC.md) : toolAddMetadataNC
 - [`toolAggregateCropland()`](toolAggregateCropland.md) :
   toolAggregateCropland
+- [`toolAllocateRegionTotals()`](toolAllocateRegionTotals.md) :
+  toolAllocateRegionTotals
+- [`toolCapFertilizerKgPerHa()`](toolCapFertilizerKgPerHa.md) :
+  toolCapFertilizerKgPerHa
 - [`toolCheckWoodHarvestArea()`](toolCheckWoodHarvestArea.md) :
   toolCheckWoodHarvestArea
 - [`toolCropData()`](toolCropData.md) : toolCropData
@@ -68,6 +72,10 @@
   toolFillYearsSpatRaster
 - [`toolGetHarmonizer()`](toolGetHarmonizer.md) : toolGetHarmonizer
 - [`toolGetSmallerArea()`](toolGetSmallerArea.md) : toolGetSmallerArea
+- [`toolHandleNegatives()`](toolHandleNegatives.md) :
+  toolHandleNegatives
+- [`toolHarmonizeAbsoluteChanges()`](toolHarmonizeAbsoluteChanges.md) :
+  toolHarmonizeAbsoluteChanges
 - [`toolHarmonizeFade()`](toolHarmonizeFade.md) : toolHarmonizeFade
 - [`toolHarmonizeFadeForest()`](toolHarmonizeFadeForest.md) :
   toolHarmonizeFadeForest
@@ -78,10 +86,22 @@
 - [`toolMaxExpansion()`](toolMaxExpansion.md) : toolMaxExpansion
 - [`toolMaxHarvestPerYear()`](toolMaxHarvestPerYear.md) :
   toolMaxHarvestPerYear
+- [`toolParallelBiohCoverTotals()`](toolParallelBiohCoverTotals.md) :
+  toolParallelBiohCoverTotals
+- [`toolParallelCoverTargets()`](toolParallelCoverTargets.md) :
+  toolParallelCoverTargets
+- [`toolParallelHarvestCoverTotals()`](toolParallelHarvestCoverTotals.md)
+  : toolParallelHarvestCoverTotals
 - [`toolPrimExpansionCheck()`](toolPrimExpansionCheck.md) :
   toolPrimExpansionCheck
+- [`toolProjectFertilizerTg()`](toolProjectFertilizerTg.md) :
+  toolProjectFertilizerTg
+- [`toolRedistributeBioh()`](toolRedistributeBioh.md) :
+  toolRedistributeBioh
 - [`toolReplaceExpansion()`](toolReplaceExpansion.md) :
   toolReplaceExpansion
+- [`toolReportDeviation()`](toolReportDeviation.md) :
+  toolReportDeviation
 - [`toolResolutionMapping()`](toolResolutionMapping.md) :
   toolResolutionMapping
 - [`toolScaleConstantArea()`](toolScaleConstantArea.md) :

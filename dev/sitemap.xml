@@ -1,10 +1,11 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>/dev/CODE_STYLE.html</loc></url>
+<url><loc>/dev/CONTRIBUTING.html</loc></url>
 <url><loc>/dev/LICENSE.html</loc></url>
 <url><loc>/dev/articles/basicUsage.html</loc></url>
 <url><loc>/dev/articles/downscaleNewModel.html</loc></url>
 <url><loc>/dev/articles/index.html</loc></url>
 <url><loc>/dev/authors.html</loc></url>
-<url><loc>/dev/changelog.html</loc></url>
 <url><loc>/dev/index.html</loc></url>
 <url><loc>/dev/reference/calcLandCategorizationWeight.html</loc></url>
 <url><loc>/dev/reference/calcLandHarmonized.html</loc></url>
@@ -46,6 +47,8 @@
 <url><loc>/dev/reference/readMagpieFulldataGdx.html</loc></url>
 <url><loc>/dev/reference/toolAddMetadataNC.html</loc></url>
 <url><loc>/dev/reference/toolAggregateCropland.html</loc></url>
+<url><loc>/dev/reference/toolAllocateRegionTotals.html</loc></url>
+<url><loc>/dev/reference/toolCapFertilizerKgPerHa.html</loc></url>
 <url><loc>/dev/reference/toolCheckWoodHarvestArea.html</loc></url>
 <url><loc>/dev/reference/toolCropData.html</loc></url>
 <url><loc>/dev/reference/toolDownscaleMagpieClassic.html</loc></url>
@@ -53,14 +56,22 @@
 <url><loc>/dev/reference/toolFillYearsSpatRaster.html</loc></url>
 <url><loc>/dev/reference/toolGetHarmonizer.html</loc></url>
 <url><loc>/dev/reference/toolGetSmallerArea.html</loc></url>
+<url><loc>/dev/reference/toolHandleNegatives.html</loc></url>
+<url><loc>/dev/reference/toolHarmonizeAbsoluteChanges.html</loc></url>
 <url><loc>/dev/reference/toolHarmonizeFade.html</loc></url>
 <url><loc>/dev/reference/toolHarmonizeFadeForest.html</loc></url>
 <url><loc>/dev/reference/toolHarmonizeOffset.html</loc></url>
 <url><loc>/dev/reference/toolLandCategoriesMapping.html</loc></url>
 <url><loc>/dev/reference/toolMaxExpansion.html</loc></url>
 <url><loc>/dev/reference/toolMaxHarvestPerYear.html</loc></url>
+<url><loc>/dev/reference/toolParallelBiohCoverTotals.html</loc></url>
+<url><loc>/dev/reference/toolParallelCoverTargets.html</loc></url>
+<url><loc>/dev/reference/toolParallelHarvestCoverTotals.html</loc></url>
 <url><loc>/dev/reference/toolPrimExpansionCheck.html</loc></url>
+<url><loc>/dev/reference/toolProjectFertilizerTg.html</loc></url>
+<url><loc>/dev/reference/toolRedistributeBioh.html</loc></url>
 <url><loc>/dev/reference/toolReplaceExpansion.html</loc></url>
+<url><loc>/dev/reference/toolReportDeviation.html</loc></url>
 <url><loc>/dev/reference/toolResolutionMapping.html</loc></url>
 <url><loc>/dev/reference/toolScaleConstantArea.html</loc></url>
 <url><loc>/dev/reference/toolTransitionsBasic.html</loc></url>
