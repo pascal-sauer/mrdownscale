@@ -7,13 +7,13 @@
 toolProjectRegionalDelta(xTarget, xInput, shareWeight, harmonizationYear)
 }
 \arguments{
-\item{xTarget}{target amounts, provides the per-cell anchor for the
+\item{xTarget}{target amounts, provides the per-cluster anchor for the
 harmonization year}
 
 \item{xInput}{input amounts, containing the harmonization year and the years
 after it}
 
-\item{shareWeight}{weights defining each cell's share of its region's
+\item{shareWeight}{weights defining each cluster's share of its region's
 projected delta for the years after the harmonization year}
 
 \item{harmonizationYear}{integer year the input changes are measured from}
@@ -25,8 +25,8 @@ clamped at zero, in the item order of xTarget
 \description{
 Project amounts onto target data: for every year after the harmonization
 year, the change of each region's amount total relative to the harmonization
-year is distributed onto the cells of the region proportional to their share
-weight of that year, on top of the per-cell amount anchor of the
+year is distributed onto the clusters of the region proportional to their
+share weight of that year, on top of the per-cluster amount anchor of the
 harmonization year. Region totals are preserved, and amounts only grow where
 the share weight is positive.
 }

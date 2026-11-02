@@ -7,27 +7,28 @@
 toolRedistributeOverCap(
   xAmount,
   capAmount,
-  message = "Regions absorb their own excess"
+  warnMessage = "Regions compensate for their own excess"
 )
 }
 \arguments{
-\item{xAmount}{amounts per cell}
+\item{xAmount}{amounts per cluster}
 
-\item{capAmount}{cap per cell, in the same unit as xAmount}
+\item{capAmount}{cap per cluster, in the same unit as xAmount}
 
-\item{message}{message of the warn check whether regions absorb their own excess}
+\item{warnMessage}{message of the warn check whether regions compensate for their own excess}
 }
 \value{
-amounts per cell, capped, with the totals of the feasible tables preserved
+amounts per cluster, capped, with the totals of the feasible variables preserved
 }
 \description{
-Enforce a cap on per-cell amounts by redistributing the amount of every cell
-above it onto the remaining headroom of the cells of the same region and
-table, or of the global pool for those tables in which a region cannot absorb
-its own excess. Receivers only receive a share proportional to their own
-headroom, so a single pass suffices and no one overshoots. Tables in which
-not even the global pool has enough headroom are left unchanged, so that the
-amount totals stay intact and the caller can report the exceedance.
+Enforce a cap on per-cluster amounts by redistributing the amount of every
+cluster above it over the remaining headroom of the clusters of the same
+region and variable, or of the global pool for those variables in which a
+region cannot compensate for its own excess. Receivers only receive a share
+proportional to their own headroom, so a single pass suffices and no one
+overshoots. Variables in which not even the global pool has enough headroom
+are left unchanged, so that the amount totals stay intact and the caller can
+report the exceedance.
 }
 \author{
 Pascal Sauer

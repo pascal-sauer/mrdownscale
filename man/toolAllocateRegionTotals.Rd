@@ -6,31 +6,42 @@
 \usage{
 toolAllocateRegionTotals(
   targetRegionAmount,
-  clusterWeight,
-  warnMessage = "Regions with target totals > 0 have hosting capacity"
+  clusterCapacity,
+  warnMessage = "Regions with target totals > 0 have receiving capacity"
 )
 }
 \arguments{
 \item{targetRegionAmount}{target amount total per region and variable, e.g.
 wood harvest area}
 
-\item{clusterWeight}{weight/capacity per cluster, e.g. forest land}
+\item{clusterCapacity}{capacity per cluster, doubling as the distribution
+weight, e.g. forest land}
 
 \item{warnMessage}{message of the warn check whether regions with target
-amounts > 0 have hosting capacity/weight > 0}
+amounts > 0 have receiving capacity > 0}
 }
 \value{
-amounts per cluster, proportional to their weight
+amounts per cluster, proportional to their capacity
 }
 \description{
-Allocate target amounts (e.g. wood harvest area) per region and variable
-directly onto the clusters, proportional to their weight
-(e.g. forest land), so the totals of the regions with hosting capacity
-(weight above zero) reach their target exactly. Targets > 0 of regions
-without any capacity are pooled globally and distributed over all clusters
-proportional to their weight as well. For example, the target amount can be
-the wood harvest area per region, the weight / capacity the forest land per
-cluster which can host it.
+Distribute target amounts (e.g. wood harvest area) per region and variable
+over the clusters (weight: their capacity, e.g. forest land), so the totals
+of the regions with capacity above zero reach their target exactly. A
+cluster can never physically receive more than its capacity. Each cluster
+first receives its own share: the region's target distributed over the
+region's clusters proportional to their capacity. Shares are not capped at
+the cluster's capacity. A region whose target exceeds its region's total
+capacity gives its clusters more than their capacity, on purpose, and the
+caller has to account for the excess. Targets > 0 of regions without any
+capacity are pooled globally and spread over the remaining room (capacity
+minus own share) of all clusters, so borrowed amounts never push a cluster
+past its capacity. If the global room is too small for the whole stranded
+pool, the remainder is not allocated and has to be accounted for by the
+caller.
+}
+\details{
+This is a helper function for harmonization, not a general tool to
+disaggregate region totals over clusters.
 }
 \author{
 Pascal Sauer

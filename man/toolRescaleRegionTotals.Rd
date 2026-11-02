@@ -6,28 +6,28 @@
 \usage{
 toolRescaleRegionTotals(
   xAmount,
-  expectedRegionAmount,
-  message = "Regions with expected totals have hosting capacity"
+  targetRegionAmount,
+  warnMessage = "Regions with target totals have receiving capacity"
 )
 }
 \arguments{
-\item{xAmount}{amounts per cell}
+\item{xAmount}{amounts per cluster}
 
-\item{expectedRegionAmount}{expected amount total per region and table}
+\item{targetRegionAmount}{target amount total per region and variable}
 
-\item{message}{message of the warn check whether regions with expected
-amounts have hosting capacity}
+\item{warnMessage}{message of the warn check whether regions with target
+amounts have receiving capacity}
 }
 \value{
-amounts per cell, rescaled so the region totals of the tables without
-global fallback match their expectation
+amounts per cluster, rescaled so the region totals of the variables
+without global fallback match their target
 }
 \description{
-Rescale per-cell amounts so that each region's amount total of every table
-reaches its expected amount, distributing amounts lost where cells could no
-longer hold them to the other cells of the same region, falling back to the
-global factor exactly in those tables where a region expects amounts but has
-no capacity left to hold any.
+Rescale per-cluster amounts so that each region's amount total of every
+variable reaches its target amount, distributing amounts lost where clusters
+could no longer hold them to the other clusters of the same region, falling
+back to the global factor exactly in those variables where a region expects
+amounts but has no capacity left to hold any.
 }
 \author{
 Pascal Sauer
