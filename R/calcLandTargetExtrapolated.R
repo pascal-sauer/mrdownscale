@@ -13,7 +13,8 @@
 #' @inheritParams calcLandInput
 #' @param target character, name of the target data set
 #' @param harmonizationPeriod Two integer values, will extrapolate to all years
-#' present in input data between harmonization start and end year
+#' present in input data between harmonization start and end year. If both
+#' values are equal, the target data up to that year is returned unchanged.
 #' @return extrapolated land target data, if calcOutput is called with
 #' supplementary = TRUE and target is luh2mod wood harvest area is also returned
 #' @author Pascal Sauer
@@ -25,6 +26,17 @@ calcLandTargetExtrapolated <- function(input, target, harmonizationPeriod) {
   xTarget <- calcOutput("LandTargetLowRes", input = input, target = target,
                         endOfHistory = hp[1], aggregate = FALSE)
   histYears <- getYears(xTarget, as.integer = TRUE)
+
+  # if harmonization start and end year are equal, no extrapolation is needed
+  if (hp[1] == hp[2]) {
+    return(list(x = xTarget,
+                isocountries = FALSE,
+                unit = "Mha",
+                min = 0,
+                description = "Extrapolated land target data for harmonization",
+                clean_magpie = FALSE))
+  }
+
   targetArea <- dimSums(setYears(xTarget[, max(histYears), ], NULL), dim = 3)
 
   transitionYears <- inputYears[inputYears > max(histYears)
@@ -120,6 +132,16 @@ calcLandTargetExtrapolatedCore <- function(input, target, harmonizationPeriod) {
   xTarget <- calcOutput("LandTargetLowRes", input = input, target = target,
                         endOfHistory = harmonizationPeriod[1], aggregate = FALSE)
   histYears <- getYears(xTarget, as.integer = TRUE)
+
+  # if harmonization start and end year are equal, no extrapolation is needed
+  if (harmonizationPeriod[1] == harmonizationPeriod[2]) {
+    return(list(x = xTarget,
+                isocountries = FALSE,
+                unit = "Mha",
+                min = 0,
+                description = "Extrapolated land target data for harmonization",
+                clean_magpie = FALSE))
+  }
 
   transitionYears <- inputYears[inputYears > max(histYears)
                                 & inputYears < harmonizationPeriod[2]]

@@ -10,7 +10,8 @@
 #' @param target name of a target dataset, see \code{\link{calcLandTarget}}
 #' for available target datasets
 #' @param harmonizationPeriod Two integer values, will extrapolate to all years
-#' present in input data between harmonization start and end year
+#' present in input data between harmonization start and end year. If both
+#' values are equal, the target data up to that year is returned unchanged.
 #' @return extrapolated nonland target data
 #'
 #' @examples
@@ -26,6 +27,15 @@ calcNonlandTargetExtrapolated <- function(input, target, harmonizationPeriod) {
 
   xTarget <- calcOutput("NonlandTargetLowRes", input = input, target = target,
                         endOfHistory = hp[1], aggregate = FALSE)
+
+  # if harmonization start and end year are equal, no extrapolation is needed
+  if (hp[1] == hp[2]) {
+    return(list(x = xTarget,
+                isocountries = FALSE,
+                unit = "harvest_weight & bioh: kg C yr-1; harvest_area: Mha yr-1; fertilizer: kg ha-1 yr-1",
+                min = 0,
+                description = "Extrapolated nonland target data for harmonization"))
+  }
 
   transitionYears <- inputYears[inputYears > max(getYears(xTarget, TRUE))
                                 & inputYears < hp[2]]
