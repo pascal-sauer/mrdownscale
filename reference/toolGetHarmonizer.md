@@ -5,7 +5,7 @@ Get a harmonizer function by name.
 ## Usage
 
 ``` r
-toolGetHarmonizer(harmonizerName)
+toolGetHarmonizer(harmonizerName, constantTotal)
 ```
 
 ## Arguments
@@ -14,6 +14,11 @@ toolGetHarmonizer(harmonizerName)
 
   name of a harmonizer function, currently offset, fade, fadeForest,
   absoluteChanges
+
+- constantTotal:
+
+  TRUE for area conservative land data, FALSE otherwise, only used by
+  the absoluteChanges harmonizer, ignored by the others
 
 ## Value
 

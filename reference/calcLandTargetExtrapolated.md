@@ -29,7 +29,8 @@ calcLandTargetExtrapolated(input, target, harmonizationPeriod)
 - harmonizationPeriod:
 
   Two integer values, will extrapolate to all years present in input
-  data between harmonization start and end year
+  data between harmonization start and end year. If both values are
+  equal, the target data up to that year is returned unchanged.
 
 ## Value
 

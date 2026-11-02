@@ -9,7 +9,12 @@ the target data of the harmonization year.
 ## Usage
 
 ``` r
-toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod)
+toolHarmonizeAbsoluteChanges(
+  xInput,
+  xTarget,
+  harmonizationPeriod,
+  constantTotal
+)
 ```
 
 ## Arguments
@@ -27,6 +32,10 @@ toolHarmonizeAbsoluteChanges(xInput, xTarget, harmonizationPeriod)
   Two identical integer values, the year the absolute changes of the
   input data are applied to, must be present in both input and target
   data
+
+- constantTotal:
+
+  TRUE if the total area of each cell is constant over time
 
 ## Value
 
@@ -48,7 +57,10 @@ scaled down to keep the total area constant.
 primf and primn cannot regrow, so if they were scaled down to compensate
 that would persist in all later timesteps (toolReplaceExpansion caps
 prim areas at previous timestep). Hence they are only scaled down once
-all other variables in their group were scaled down to zero first.
+all other variables in their group were scaled down to zero first. This
+group compensation and constant total area applies only to data whose
+total area is constant (constantTotal = TRUE). For constantTotal = FALSE
+data negative values are simply clamped to zero.
 
 ## Author
 

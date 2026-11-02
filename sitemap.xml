@@ -7,7 +7,6 @@
 <url><loc>/articles/downscaleNewModel.html</loc></url>
 <url><loc>/articles/index.html</loc></url>
 <url><loc>/authors.html</loc></url>
-<url><loc>/changelog.html</loc></url>
 <url><loc>/index.html</loc></url>
 <url><loc>/reference/calcLandCategorizationWeight.html</loc></url>
 <url><loc>/reference/calcLandHarmonized.html</loc></url>
@@ -49,6 +48,7 @@
 <url><loc>/reference/readMagpieFulldataGdx.html</loc></url>
 <url><loc>/reference/toolAddMetadataNC.html</loc></url>
 <url><loc>/reference/toolAggregateCropland.html</loc></url>
+<url><loc>/reference/toolCapFertilizerKgPerHa.html</loc></url>
 <url><loc>/reference/toolCheckWoodHarvestArea.html</loc></url>
 <url><loc>/reference/toolCropData.html</loc></url>
 <url><loc>/reference/toolDownscaleMagpieClassic.html</loc></url>
@@ -65,8 +65,10 @@
 <url><loc>/reference/toolMaxExpansion.html</loc></url>
 <url><loc>/reference/toolMaxHarvestPerYear.html</loc></url>
 <url><loc>/reference/toolPrimExpansionCheck.html</loc></url>
+<url><loc>/reference/toolProjectFertilizerTg.html</loc></url>
+<url><loc>/reference/toolRedistributeBioh.html</loc></url>
 <url><loc>/reference/toolReplaceExpansion.html</loc></url>
-<url><loc>/reference/toolReportAreaDeviation.html</loc></url>
+<url><loc>/reference/toolReportDeviation.html</loc></url>
 <url><loc>/reference/toolResolutionMapping.html</loc></url>
 <url><loc>/reference/toolScaleConstantArea.html</loc></url>
 <url><loc>/reference/toolTransitionsBasic.html</loc></url>
