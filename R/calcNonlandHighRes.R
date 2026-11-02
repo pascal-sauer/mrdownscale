@@ -58,7 +58,7 @@ calcNonlandHighRes <- function(input, target, harmonizationPeriod, yearsSubset, 
   bioh <- x[, futureYears, "bioh"]
   weightBioh <- harvestAreaDownscaled
   getItems(weightBioh, 3.1) <- sub("wood_harvest_area$", "bioh", getItems(weightBioh, 3.1))
-  stopifnot(getItems(weightBioh, 3) == getItems(bioh, 3))
+  stopifnot(setequal(getItems(weightBioh, 3), getItems(bioh, 3)))
   biohDownscaled <- toolAggregate(bioh, resmap, weight = weightBioh, from = "lowRes", to = "cell",
                                   dim = 1, zeroWeight = "fix")
 
