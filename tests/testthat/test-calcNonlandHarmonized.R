@@ -521,7 +521,7 @@ test_that("the global fallback is scoped to the offending crop group and year ta
   expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
 })
 
-test_that("clusters with zero harvest area host no bioh for absoluteChanges", {
+test_that("clusters with zero harvest area get no bioh for absoluteChanges", {
   # identical to the first test, except reg.one loses its harmonized harvest
   # area after 2020 while keeping positive bioh: under absoluteChanges the
   # regional cover target is distributed over the clusters (weight:
@@ -680,7 +680,7 @@ test_that("absoluteChanges compensates clamped bioh within the region", {
   # zero: the region's parallel target 4000 - 2500 + 500 = 2000 is
   # allocated onto the recalculated bioh (primf floored to the smallest positive
   # rate 500), so both cells share it proportional to their recalculated
-  # 1000 and 2500, the other cell absorbing the difference
+  # 1000 and 2500, the other cell compensating for the difference
   cells <- c("regone.1", "regone.2", "regtwo.1")
 
   xInput <- new.magpie(cells, years = c(2020, 2025), names = nonlandItems, fill = 0)
@@ -751,7 +751,7 @@ test_that("absoluteChanges allocates regional bioh proportional to recalculated 
   # biohCalculated (harmonized kg C per Mha times harmonized harvest area):
   # regone.1 recalculates to 2 x 7200, regone.2 to 2 x 1200 and regone.3 to
   # zero, so of the region target 9200 regone.1 holds 6/7, regone.2 1/7
-  # and the capacity-less regone.3 exactly nothing, the ratio of the hosting
+  # and the capacity-less regone.3 exactly nothing, the ratio of the receiving
   # clusters being their recalculated ratio 6:1
   cells <- c("regone.1", "regone.2", "regone.3")
 
@@ -883,7 +883,7 @@ test_that("absoluteChanges leaves stranded bioh unallocated when no global room 
   expect_true(any(grepl("Check failed.*Global bioh totals are parallel", conditions$conditions)))
   x <- result$x
 
-  # regone.1 hosts nothing, regtwo.1 hosts only its own 2000, the stranded
+  # regone.1 gets nothing, regtwo.1 receives only its own 2000, the stranded
   # 1100 finds no remaining room and is lost
   biohRegion <- dimSums(x[, c(2025, 2030), "bioh"], c(1.2, 3))
   expect_equal(as.numeric(biohRegion["regone", , ]), rep(0, 2))
@@ -1069,11 +1069,11 @@ test_that("absoluteChanges allocates the global other land cover target first wh
   expect_true(min(x) >= 0)
 })
 
-test_that("absoluteChanges charges a negative global other land cover target to the forest cover", {
+test_that("absoluteChanges compensates a negative global other land cover target with the forest cover", {
   # both regions' input other land bioh collapses far below their target anchors
   # so the global other land target turns negative while the flat global
   # forest target outweighs the loss: the floored other land total must be
-  # charged to the forest cover so the global total over all covers stays
+  # compensated for by the forest cover so the global total over all covers stays
   # parallel to the input and the positive forest regions are uniformly scaled
   # by the balancing factor 3702 / 4000
   cells <- c("regone.1", "regtwo.1")
@@ -1142,7 +1142,7 @@ test_that("absoluteChanges charges a negative global other land cover target to 
   expect_equal(as.vector(dimSums(other, 1)[, 2025, ]), 0)
   expect_equal(as.vector(dimSums(other, 1)[, 2030, ]), 0)
 
-  # the forest cover absorbs the charged loss: its global total is the summed
+  # the forest cover compensates for the loss: its global total is the summed
   # un-floored global target 4000 - 298, not its own global target
   expect_equal(as.vector(dimSums(forest, 1)[, 2025, ]), 3702, tolerance = 10^-6)
   expect_equal(as.vector(dimSums(forest, 1)[, 2030, ]), 3702, tolerance = 10^-6)

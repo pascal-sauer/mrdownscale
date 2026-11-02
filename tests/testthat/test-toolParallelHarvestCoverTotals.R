@@ -60,7 +60,7 @@ test_that("toolParallelHarvestCoverTotals keeps cover targets parallel and alloc
 
 test_that("toolParallelHarvestCoverTotals reports the excess that does not fit even in the other cover", {
   # regone grows its forest harvest to 23 while its forest land caps at 12 and
-  # the other land cover takes just 1 of the 11 excess: what remains unhostable
+  # the other land cover takes just 1 of the 11 excess: what does not fit
   # is dropped at the caps and returned as an excess of 10
   years <- c(2010, 2020, 2025, 2030)
   land <- makeLand(years, list(

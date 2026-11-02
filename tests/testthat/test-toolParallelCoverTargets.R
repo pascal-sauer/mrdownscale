@@ -47,10 +47,10 @@ test_that("toolParallelCoverTargets floors negative regional targets and keeps t
   expect_equal(as.numeric(result$coverGlobalBalanced[, 2025, ]), 231, tolerance = 10^-9)
 })
 
-test_that("toolParallelCoverTargets floors a negative global cover target at zero and charges the other covers", {
+test_that("toolParallelCoverTargets floors a negative global cover target at zero, compensated by the other covers", {
   # both regions' other land targets are negative (-199 and 100 + (1 - 200)
   # = -99), so the global other target -298 is floored to zero and its loss
-  # charged to the forest cover whose regions are uniformly scaled by
+  # compensated by the forest cover whose regions are uniformly scaled by
   # 1702 / 2000, keeping the global total over all covers input parallel
   inputCover <- list(forest = makeCover(list(regone = c(1000, 1000), regtwo = c(1000, 1000)),
                                         years = c(2020, 2025)),

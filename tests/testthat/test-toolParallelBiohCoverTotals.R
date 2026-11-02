@@ -1,6 +1,6 @@
 test_that("toolParallelBiohCoverTotals leaves stranded bioh unallocated when no global room is left", {
   # regone.1 targets 2500 + (2100 - 3500) = 1100 forest bioh in 2025/2030 but
-  # its recalculated bioh is zero, so it hosts nothing; regtwo.1's own share of
+  # its recalculated bioh is zero, so it gets nothing; regtwo.1's own share of
   # 2000 already fills its whole recalculated weight 1000 + 1000, leaving no
   # remaining room, so the stranded 1100 stays unallocated
   cells <- c("regone.1", "regtwo.1")
@@ -28,7 +28,7 @@ test_that("toolParallelBiohCoverTotals leaves stranded bioh unallocated when no 
   expect_true(any(grepl("Check failed.*Regional forest bioh totals are parallel", conditions$conditions)))
   expect_true(any(grepl("Check failed.*Global bioh totals are parallel", conditions$conditions)))
 
-  # regtwo.1 hosts only its own 2000, split by its recalculated item weights
+  # regtwo.1 receives only its own 2000, split by its recalculated item weights
   # 1000/1000, the stranded 1100 of regone finds no room and is lost
   expect_equal(as.vector(result["regone.1", c(2025, 2030), ]), rep(0, 4))
   expect_equal(as.vector(result["regtwo.1", c(2025, 2030), ]), rep(2000 / 2, 4))
@@ -65,7 +65,7 @@ test_that("toolParallelBiohCoverTotals allocates the global cover target first w
   )
   expect_false(any(grepl("Check failed", conditions$conditions)))
 
-  # regone hosts nothing of the cover whose regional target turned
+  # regone gets nothing of the cover whose regional target turned
   # negative, regtwo carries the whole raw global target 201 and 401
   expect_equal(as.vector(result["regone.1", c(2025, 2030), "bioh.secnf"]), c(0, 0))
   expect_equal(as.vector(result["regtwo.1", 2025, "bioh.secnf"]), 201, tolerance = 10^-9)
@@ -76,9 +76,9 @@ test_that("toolParallelBiohCoverTotals allocates the global cover target first w
   expect_equal(as.vector(result["regtwo.1", 2030, "bioh.primf"]), 1000, tolerance = 10^-9)
 })
 
-test_that("toolParallelBiohCoverTotals charges a negative global cover target to the other covers", {
+test_that("toolParallelBiohCoverTotals compensates a negative global cover target with the other covers", {
   # both regions' other land targets are negative, so the global other
-  # land target -298 turns negative and is floored to zero, charged to the
+  # land target -298 turns negative and is floored to zero, compensated by the
   # forest cover whose regions are uniformly scaled by 1702 / 2000
   cells <- c("regone.1", "regtwo.1")
   items <- c("bioh.primf", "bioh.secnf")
@@ -103,7 +103,7 @@ test_that("toolParallelBiohCoverTotals charges a negative global cover target to
   expect_false(any(grepl("Check failed", conditions$conditions)))
 
   expect_equal(as.vector(result[, c(2025, 2030), "bioh.secnf"]), rep(0, 4))
-  # the forest cover absorbs the charged loss: 1000 * 1702 / 2000 per region
+  # the forest cover compensates for the loss: 1000 * 1702 / 2000 per region
   expect_equal(as.vector(result["regone.1", 2025, "bioh.primf"]), 1000 * (1702 / 2000), tolerance = 10^-6)
   expect_equal(as.vector(result["regtwo.1", 2030, "bioh.primf"]), 1000 * (1702 / 2000), tolerance = 10^-6)
   # the global total over all covers stays parallel to the input

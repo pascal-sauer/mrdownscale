@@ -313,7 +313,7 @@ test_that("absoluteChanges flows a region target above its cap into the other co
   expect_equal(as.vector(regionTotal["regone", 2025, ]), 35, tolerance = 10^-8)
 })
 
-test_that("absoluteChanges respects the physical cap and reports the unhostable excess", {
+test_that("absoluteChanges respects the physical cap and reports the excess that does not fit", {
   # regone grows its forest harvest to 20 on regone.1 while the forest land of
   # both clusters together only allows 12 and the 1 Mha yr-1 of other land
   # headroom takes just a part of the 11 excess: what even the other cover
