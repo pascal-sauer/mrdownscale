@@ -23,8 +23,8 @@ toolCropData(landHighRes, cellArea)
 
 ## Value
 
-crop data as magclass object with variables irrig\_\*, cpbf1\_\*,
-cpbf2\_\*, \* for all 5 crop types
+crop data as magclass object with variables `irrig_*`, `cpbf1_*`,
+`cpbf2_*`, `*` for all 5 crop types
 
 ## Author
 

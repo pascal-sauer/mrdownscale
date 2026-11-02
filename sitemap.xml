@@ -48,6 +48,7 @@
 <url><loc>/reference/readMagpieFulldataGdx.html</loc></url>
 <url><loc>/reference/toolAddMetadataNC.html</loc></url>
 <url><loc>/reference/toolAggregateCropland.html</loc></url>
+<url><loc>/reference/toolAllocateRegionTotals.html</loc></url>
 <url><loc>/reference/toolCapFertilizerKgPerHa.html</loc></url>
 <url><loc>/reference/toolCheckWoodHarvestArea.html</loc></url>
 <url><loc>/reference/toolCropData.html</loc></url>
@@ -64,6 +65,9 @@
 <url><loc>/reference/toolLandCategoriesMapping.html</loc></url>
 <url><loc>/reference/toolMaxExpansion.html</loc></url>
 <url><loc>/reference/toolMaxHarvestPerYear.html</loc></url>
+<url><loc>/reference/toolParallelBiohCoverTotals.html</loc></url>
+<url><loc>/reference/toolParallelCoverTargets.html</loc></url>
+<url><loc>/reference/toolParallelHarvestCoverTotals.html</loc></url>
 <url><loc>/reference/toolPrimExpansionCheck.html</loc></url>
 <url><loc>/reference/toolProjectFertilizerTg.html</loc></url>
 <url><loc>/reference/toolRedistributeBioh.html</loc></url>

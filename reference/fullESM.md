@@ -36,7 +36,7 @@ fullESM(
 - fileNamePart:
 
   scenario nc files will be called
-  multiple-\[type\]\_\[fileNamePart\]-\[revision\]\_gn\_\[min(yearsSubset)\]-\[max(yearsSubset)\].nc
+  `multiple-[type]_[fileNamePart]-[revision]_gn_[min(yearsSubset)]-[max(yearsSubset)].nc`
   where type is one of states/management/transitions
 
 - harmonizationPeriod:
