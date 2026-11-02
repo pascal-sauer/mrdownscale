@@ -14,8 +14,8 @@ times harvest area}
 }
 \value{
 bioh in kg C yr-1 with the stranded bioh moved to the receivers,
-  zero on clusters without harvest area, totals preserved unless bioh had
-  to be dropped
+zero on clusters without harvest area, totals preserved unless bioh had
+to be dropped
 }
 \description{
 Move the bioh of clusters without wood harvest area to the clusters that still
