@@ -8,7 +8,7 @@
 #' When called via madrat::retrieveData rev will be converted to numeric_version.
 #' @inheritParams calcLandInput
 #' @param fileNamePart scenario nc files will be called
-#' multiple-[type]_[fileNamePart]-[revision]_gn_[min(yearsSubset)]-[max(yearsSubset)].nc
+#' `multiple-[type]_[fileNamePart]-[revision]_gn_[min(yearsSubset)]-[max(yearsSubset)].nc`
 #' where type is one of states/management/transitions
 #' @param harmonizationPeriod Two integer values, before the first given
 #' year the target dataset is used, after the second given year the input

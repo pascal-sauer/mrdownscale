@@ -12,8 +12,8 @@ toolCropData(landHighRes, cellArea)
 \item{cellArea}{corresponding magclass object containing cell area in Mha}
 }
 \value{
-crop data as magclass object with variables irrig_*, cpbf1_*,
-cpbf2_*, * for all 5 crop types
+crop data as magclass object with variables \verb{irrig_*}, \verb{cpbf1_*},
+\verb{cpbf2_*}, \code{*} for all 5 crop types
 }
 \description{
 For each crop type (c3ann, c3nfx, c3per, c4ann, c4per) calculate irrigation

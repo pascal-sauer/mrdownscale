@@ -1,7 +1,7 @@
 Type: Package
 Package: mrdownscale
 Title: Downscale and harmonize land use data
-Version: 0.53.0
+Version: 0.54.0
 Date: 2026-11-02
 Authors@R: c(
     person("Pascal", "Sauer", , "pascal.sauer@pik-potsdam.de", role = c("aut", "cre"),
@@ -36,9 +36,10 @@ Suggests:
     rmarkdown,
     testthat,
     usethis
+Roxygen: list(markdown = TRUE)
 VignetteBuilder:
     knitr
 Encoding: UTF-8
 LazyData: true
-Config/Needs/website: tidyverse/tidytemplate
 Config/roxygen2/version: 8.1.0
+Config/Needs/website: tidyverse/tidytemplate

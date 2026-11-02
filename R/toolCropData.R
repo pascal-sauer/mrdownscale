@@ -7,8 +7,8 @@
 #'
 #' @param landHighRes high resolution land use data as magclass object
 #' @param cellArea corresponding magclass object containing cell area in Mha
-#' @return crop data as magclass object with variables irrig_*, cpbf1_*,
-#' cpbf2_*, * for all 5 crop types
+#' @return crop data as magclass object with variables `irrig_*`, `cpbf1_*`,
+#' `cpbf2_*`, `*` for all 5 crop types
 #' @author Pascal Sauer
 toolCropData <- function(landHighRes, cellArea) {
   cropTypes <- c("c3ann", "c3nfx", "c3per", "c4ann", "c4per")
