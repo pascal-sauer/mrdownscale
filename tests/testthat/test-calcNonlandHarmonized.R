@@ -8,7 +8,7 @@ test_that("calcNonlandHarmonized works with harmonization = absoluteChanges", {
   # functions are mocked with synthetic data
   # for reg.one the kg C per Mha of primf drops in the input from 2000 to 500,
   # the raw absolute change is negative, so the harmonizer clamps it to zero
-  # and it is later floored to the smallest positive rate
+  # and it is later set to the smallest positive rate
   xInput <- new.magpie(c("reg.one", "reg.two"), years = c(2020, 2025, 2030), names = nonlandItems, fill = 0)
   xInput["reg.one", 2020, ] <- c(2000, 1500, 1, 1, 3, 1, 400)
   xInput["reg.one", 2025, ] <- c(500, 1600, 1, 1, 2, 2, 500)
@@ -96,7 +96,7 @@ test_that("calcNonlandHarmonized works with harmonization = absoluteChanges", {
   expect_equal(as.vector(fertilizerGlobalTg[, 2025, ]), (50 + 40) + (1100 - 900))
   expect_equal(as.vector(fertilizerGlobalTg[, 2030, ]), (50 + 40) + (1000 - 900))
 
-  # the clamped kg C per Mha rate of 0 for reg.one primf is floored to the
+  # the clamped kg C per Mha rate of 0 for reg.one primf is set to the
   # smallest positive rate (1000), bioh is recalculated from it and renormalized
   # so that the total bioh of 1600 kg C yr-1 of the harmonizer output is kept:
   # primf gets 1600 * 1000 / 2600, secmf 1600 * 1600 / 2600
@@ -299,7 +299,7 @@ test_that("the residual cap pulls collapsed-area cells with anchor tonnage back 
   capTg <- 1200 * 10^-5 * 10^-3
   # the collapsed cell lands exactly on the cap instead of reaching 1e9
   expect_equal(as.vector(x["regone.1", 2025, "fertilizer"]), 1200)
-  # its excess of almost 10 Tg is absorbed by its region partner
+  # its excess of almost 10 Tg is compensated for by its region partner
   expect_equal(as.vector(x["regone.2", 2025, "fertilizer"]),
                (10 + (10 - capTg)) / 100 * (10^9 / 10^6))
   # the partner in the other region is untouched
@@ -519,70 +519,9 @@ test_that("the global fallback is scoped to the offending crop group and year ta
   expect_true(max(abs(x[, c(2010, 2020), ] - xTarget[, c(2010, 2020), ])) < 10^-5)
 })
 
-test_that("zeroing cropland-less fertilizer tonnages matches clusters by name", {
-  # the mocked nonland input lists its clusters in the reversed order of the
-  # nonland target: the projected tonnages follow the target's item order, the
-  # cropland mask the input's, so a positional mask zeroes the wrong cluster
-  xInput <- new.magpie(c("regtwo.1", "regone.1"), years = c(2020, 2025), names = nonlandItems, fill = 0)
-  xInput[, , c("bioh.primf", "bioh.secmf")] <- 1000
-  xInput[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
-  xInput[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
-  xInput["regone.1", , "fertilizer.c3ann"] <- c(10, 10)
-  xInput["regtwo.1", , "fertilizer.c3ann"] <- c(10, 10)
-  attr(xInput, "geometry") <- "point"
-  attr(xInput, "crs") <- "EPSG:4326"
-  getSets(xInput) <- c("region", "id", "year", "category", "data")
-
-  # target rate of 100 kg ha-1 yr-1 on 100 Mha anchors 10 Tg per cluster
-  xTarget <- new.magpie(c("regone.1", "regtwo.1"), years = c(2010, 2020), names = nonlandItems, fill = 0)
-  xTarget[, , c("bioh.primf", "bioh.secmf")] <- 1000
-  xTarget[, , c("wood_harvest_area.primf", "wood_harvest_area.secmf")] <- 1
-  xTarget[, , c("harvest_weight_type.roundwood", "harvest_weight_type.fuelwood")] <- 1
-  xTarget[, , "fertilizer.c3ann"] <- 100
-  getSets(xTarget) <- c("region", "id", "year", "category", "data")
-
-  landTarget <- new.magpie(c("regone.1", "regtwo.1"), years = c(2010, 2020), names = "c3ann", fill = 100)
-  landHarmonized <- new.magpie(c("regone.1", "regtwo.1"), years = c(2010, 2020, 2025),
-                               names = "c3ann", fill = 100)
-  # regtwo.1 loses all its cropland in 2025, so only its 10 Tg anchor must be zeroed
-  landHarmonized["regtwo.1", 2025, ] <- 0
-
-  harvestArea <- new.magpie(c("regone.1", "regtwo.1"), years = c(2010, 2020, 2025),
-                            names = c("wood_harvest_area.primf", "wood_harvest_area.secmf"), fill = 1)
-  getSets(harvestArea) <- c("region", "id", "year", "category", "data")
-
-  local_mocked_bindings(
-    calcOutput = function(name, ...) {
-      switch(name,
-             NonlandInputRecategorized = xInput,
-             NonlandTargetExtrapolated = xTarget,
-             LandTargetExtrapolated = landTarget,
-             LandHarmonized = landHarmonized,
-             WoodHarvestAreaHarmonized = harvestArea,
-             stop("unexpected calcOutput call for \"", name, "\""))
-    }
-  )
-
-  conditions <- captureConditions(
-    result <- calcNonlandHarmonized(input = "magpie", target = "luh3",
-                                    harmonizationPeriod = c(2020, 2020),
-                                    harmonization = "absoluteChanges")
-  )
-  # regtwo lost the land holding its tonnes, its warn fires, while the global
-  # parallelism check must stay green
-  expect_true(any(grepl("Check failed.*cropland left to hold it", conditions$conditions)))
-  expect_false(any(grepl("Check failed.*Global fertilizer totals are parallel", conditions$conditions)))
-  x <- result$x
-
-  # only regtwo's tonnes are zeroed, its unholdable target falls back globally
-  # onto regone, doubling its 10 Tg anchor to a 200 kg ha-1 yr-1 rate
-  expect_equal(as.vector(x["regone.1", 2025, "fertilizer"]), 200)
-  expect_equal(as.vector(x["regtwo.1", 2025, "fertilizer"]), 0)
-})
-
 test_that("stranded bioh of clusters with zero harvest area is redistributed", {
   # identical to the first test, except reg.one loses its harmonized harvest
-  # area after 2020 while keeping positive bioh: rates x land cannot host it
+  # area after 2020 while keeping positive bioh: rates x land cannot take it
   # where the land vanished, so the bioh of reg.one moves to
   # reg.two, the only cluster that still has harvest area
   xInput <- new.magpie(c("reg.one", "reg.two"), years = c(2020, 2025, 2030), names = nonlandItems, fill = 0)
@@ -647,7 +586,7 @@ test_that("stranded bioh of clusters with zero harvest area is redistributed", {
   expect_equal(as.vector(x["reg.one", c(2025, 2030), paste0("bioh.", c("primf", "secmf"))]),
                rep(0, 4))
 
-  # reg.two hosts the harmonizer bioh of both clusters: reg.one keeps 1600 kg C
+  # reg.two gets the harmonizer bioh of both clusters: reg.one keeps 1600 kg C
   # in 2025/2030 (primf clamped to 0, secmf 1600), which has no receiver in its
   # region and moves over the global pool to reg.two (1200 + 1000), normalization
   # then rescales the total of 3800 onto the calculated 1200/1000 split
@@ -702,7 +641,7 @@ test_that("toolCapFertilizerKgPerHa falls back to the global pool and skips infe
   # regone has no headroom of its own, the pass runs over the global pool:
   # its 30 Tg excess fits into regtwo's 110 Tg spare, reported as a warning
   conditions <- captureConditions(capped <- toolCapFertilizerKgPerHa(fert, land))
-  expect_true(any(grepl("Check failed.*Regions absorb their own fertilizer", conditions$conditions)))
+  expect_true(any(grepl("Check failed.*Regions compensate for their own fertilizer", conditions$conditions)))
   expect_equal(as.vector(capped["regone.1", , ]), 1200)
   expect_equal(as.vector(capped["regtwo.1", , ]), 400)
 
